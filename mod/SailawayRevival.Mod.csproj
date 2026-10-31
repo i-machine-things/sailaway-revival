@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Built against the player's own game assemblies:
+       dotnet build mod -p:GameManaged=<Steam>/steamapps/common/Sailaway/Sailaway_Data/Managed -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>SailawayRevival.Mod</AssemblyName>
+    <RootNamespace>SailawayRevival</RootNamespace>
+    <LangVersion>7.3</LangVersion>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Compile against the unpatched DLL so the mod never references itself. -->
+    <GameAssembly Condition="Exists('$(GameManaged)/Assembly-CSharp.dll.orig')">$(GameManaged)/Assembly-CSharp.dll.orig</GameAssembly>
+    <GameAssembly Condition="'$(GameAssembly)' == ''">$(GameManaged)/Assembly-CSharp.dll</GameAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameAssembly)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManaged)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

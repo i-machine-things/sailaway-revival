@@ -5,6 +5,8 @@ the official servers were shut down.
 
 Nothing in this repository contains the developer's code or assets. It holds:
 
+- **mod/**: gameplay changes, built against your own game files and hooked in
+  by the patcher
 - **patcher/**: patches *your own* `Assembly-CSharp.dll` in place, keeping a
   `.orig` backup. It always re-patches from the backup, so it can be re-run safely.
   - points the game at the stand-in server (default `127.0.0.1:18080/sw`)
@@ -25,8 +27,9 @@ Nothing in this repository contains the developer's code or assets. It holds:
 ## Usage
 
 ```sh
-# 1. patch the game (needs the .NET 8 SDK)
-dotnet run --project patcher -- "<Steam>/steamapps/common/Sailaway/Sailaway_Data/Managed"
+# 1. close Sailaway, then build the mod and patch the game (needs the .NET 8 SDK);
+#    finds the game in the usual Steam folders, or pass the Sailaway folder
+./install.sh
 
 # 2. run the server (keep it running while you play)
 python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
@@ -35,8 +38,13 @@ python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
 # 3. start Sailaway from Steam
 ```
 
-Steam's "verify integrity of game files" restores the original DLL; re-run the
-patcher afterwards.
+Steam's "verify integrity of game files" restores the original DLL; re-run
+`./install.sh` afterwards.
+
+## Gameplay changes
+
+- **Lines:** click a line to grab it, scroll to ease or pull, click again (or
+  press Esc) to let go. Press-and-drag still works. (`mod/LineGrab.cs`)
 
 ## Polars
 

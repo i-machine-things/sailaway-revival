@@ -4,9 +4,18 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-if (args.Length < 1)
+var positional = new List<string>();
+string? modDll = null;
+for (int i = 0; i < args.Length; i++)
 {
-    Console.Error.WriteLine("usage: patcher <Sailaway_Data/Managed dir> [server host[:port][/prefix]]");
+    if (args[i] == "--mod" && i + 1 < args.Length)
+        modDll = args[++i];
+    else
+        positional.Add(args[i]);
+}
+if (positional.Count < 1)
+{
+    Console.Error.WriteLine("usage: patcher <Sailaway_Data/Managed dir> [server host[:port][/prefix]] [--mod SailawayRevival.Mod.dll]");
     return 1;
 }
 // Replacing the DLL under a running game crashes it (Mono reads the file again
@@ -18,8 +27,8 @@ if (System.Diagnostics.Process.GetProcesses().Any(p =>
     Console.Error.WriteLine("Sailaway is running. Close the game, then run the patcher again.");
     return 3;
 }
-string managed = args[0];
-string server = args.Length > 1 ? args[1] : "127.0.0.1:18080/sw";
+string managed = positional[0];
+string server = positional.Count > 1 ? positional[1] : "127.0.0.1:18080/sw";
 string dll = Path.Combine(managed, "Assembly-CSharp.dll");
 string orig = dll + ".orig";
 if (!File.Exists(orig))
@@ -84,6 +93,33 @@ il.Emit(OpCodes.Ldc_I4_1);
 il.Emit(OpCodes.Ret);
 Console.WriteLine("  MultiuserCtrl.LockControl -> always true");
 changes++;
+
+// 5. Gameplay mods from SailawayRevival.Mod.dll, hooked into the game's code.
+if (modDll != null)
+{
+    string modName = Path.GetFileName(modDll);
+    File.Copy(modDll, Path.Combine(managed, modName), overwrite: true);
+    var mod = AssemblyDefinition.ReadAssembly(modDll, new ReaderParameters { AssemblyResolver = resolver });
+    var lineGrab = mod.MainModule.GetType("SailawayRevival.LineGrab");
+    var controlMaster = module.GetType("ControlMaster");
+
+    // Click to grab a line, scroll to adjust, click to release.
+    var update = controlMaster.Methods.First(m => m.Name == "Update" && !m.HasParameters);
+    il = update.Body.GetILProcessor();
+    var first = update.Body.Instructions[0];
+    il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
+    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(lineGrab.Methods.First(m => m.Name == "PreUpdate"))));
+
+    var find = controlMaster.Methods.First(m => m.Name == "_FindControlUnderCursor");
+    il = find.Body.GetILProcessor();
+    first = find.Body.Instructions[0];
+    il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
+    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(lineGrab.Methods.First(m => m.Name == "KeepGrab"))));
+    il.InsertBefore(first, il.Create(OpCodes.Brfalse, first));
+    il.InsertBefore(first, il.Create(OpCodes.Ret));
+    Console.WriteLine($"  mod: {modName} line grab hooked into ControlMaster");
+    changes++;
+}
 
 // Write beside the DLL and swap it in, so a half-written file never replaces it.
 string tmp = dll + ".tmp";

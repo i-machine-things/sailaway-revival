@@ -1,6 +1,8 @@
 # build output
 patcher/bin/
 patcher/obj/
+mod/bin/
+mod/obj/
 __pycache__/
 .venv/
 # never commit game code or game data
@@ -10,3 +12,4 @@ assets/
 # generated data
 tiles/
 *.HG[0-9]
+build/
