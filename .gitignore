@@ -1,0 +1,12 @@
+# build output
+patcher/bin/
+patcher/obj/
+__pycache__/
+.venv/
+# never commit game code or game data
+*.dll
+decomp/
+assets/
+# generated data
+tiles/
+*.HG[0-9]
