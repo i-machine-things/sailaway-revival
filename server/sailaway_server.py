@@ -32,7 +32,8 @@ log = logging.getLogger("sailaway")
 START_POSITION = {"ubtlat": 46.25, "ubtlon": -124.15, "ubtheading": 90.0}  # off the Columbia bar
 
 DEFAULT_STATE = {
-    "user": {"usrnr": 1, "name": "Sailor", "email": "offline@localhost", "ubtnr": 1},
+    # usrskillslevel 3: lines, sheets and trim all manual, with tips (0 = all automatic)
+    "user": {"usrnr": 1, "name": "Sailor", "email": "offline@localhost", "ubtnr": 1, "settings": {"usrskillslevel": 3}},
     "boats": {},
 }
 
@@ -87,6 +88,7 @@ def boat_info(ubtnr):
     info.update(
         {
             "ubtusrnr": STATE["user"]["usrnr"],
+            "skillslevel": STATE["user"]["settings"].get("usrskillslevel", 3),
             "polars": boats.polars(b["ubtbtpnr"]),
             "saildata": b.get("saildata", []),
             "sailors": [],
@@ -201,7 +203,21 @@ def user_data():
         "groups": [],
         "textures": [],
         "saw1license": True,
-    }
+    } | u["settings"]
+
+
+# Profile fields the game saves through UserAccount.pl (User.SaveUserSettings).
+USER_SETTINGS = {"usrskillslevel", "depthunit", "usrrace1on1", "usrlocation", "usrslogan", "usraboutme"}
+
+
+def ep_user_account(form):
+    if form.get("action") == "save":
+        with _state_lock:
+            for k, v in form.items():
+                if k in USER_SETTINGS:
+                    STATE["user"]["settings"][k] = int(v) if v.lstrip("-").isdigit() else v
+            save_state(STATE)
+    return user_data()
 
 
 def ep_login(form):
@@ -242,7 +258,7 @@ ENDPOINTS = {
     "GetWaterlevel.pl": lambda f: {"waterlevel": 0, "validformeters": 100000},
     "LoginCheck.pl": lambda f: user_data(),
     "LoginUser.pl": ep_login,
-    "UserAccount.pl": lambda f: user_data(),
+    "UserAccount.pl": ep_user_account,
     "GetBoatInfo.pl": lambda f: boat_info(f.get("ubtnr")),
     "SaveBoatValues.pl": ep_save_boat_values,
     "getenvironment.pl": ep_environment,
