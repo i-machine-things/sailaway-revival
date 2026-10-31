@@ -1,0 +1,36 @@
+# 32' Offshore Racer Figaro 3: Sailaway boat type 8
+type = 8
+name = "32' Offshore Racer Figaro 3"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "sailaway.world bdsnr 363"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 9.6
+features = ["foils", "canting keel"]
+evidence = "9.6 m hull with foils; official 32' Offshore Racer Figaro 3 (LOA 9.75 m)."
+
+[specs]  # metres, tonnes, m^2
+lwl = 9.67
+mass = 3.175
+draught = 2.14
+area_up = 71.9  # main + largest headsail
+area_max = 126.7
+stern_width = 3.4
+no_go = 37  # closest true wind angle that sails
+foils = true
+source = "sailaway.world bdsnr 363"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 42.0
+genoa = 29.9
+jib = 24.0
+gennaker = 84.7
+code0 = 61.3
+
+[polar]
+files = [{ file = "Figaro_2-2.pol", weight = 1.0 }]
+note = ""
+

@@ -100,24 +100,24 @@ if (modDll != null)
     string modName = Path.GetFileName(modDll);
     File.Copy(modDll, Path.Combine(managed, modName), overwrite: true);
     var mod = AssemblyDefinition.ReadAssembly(modDll, new ReaderParameters { AssemblyResolver = resolver });
-    var lineGrab = mod.MainModule.GetType("SailawayRevival.LineGrab");
+    var hooks = mod.MainModule.GetType("SailawayRevival.Hooks");
     var controlMaster = module.GetType("ControlMaster");
 
-    // Click to grab a line, scroll to adjust, click to release.
+    // Per-frame features (line grab, autosave) and the line-grab cursor override.
     var update = controlMaster.Methods.First(m => m.Name == "Update" && !m.HasParameters);
     il = update.Body.GetILProcessor();
     var first = update.Body.Instructions[0];
     il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
-    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(lineGrab.Methods.First(m => m.Name == "PreUpdate"))));
+    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(hooks.Methods.First(m => m.Name == "ControlMasterUpdate"))));
 
     var find = controlMaster.Methods.First(m => m.Name == "_FindControlUnderCursor");
     il = find.Body.GetILProcessor();
     first = find.Body.Instructions[0];
     il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
-    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(lineGrab.Methods.First(m => m.Name == "KeepGrab"))));
+    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(hooks.Methods.First(m => m.Name == "SkipFindControlUnderCursor"))));
     il.InsertBefore(first, il.Create(OpCodes.Brfalse, first));
     il.InsertBefore(first, il.Create(OpCodes.Ret));
-    Console.WriteLine($"  mod: {modName} line grab hooked into ControlMaster");
+    Console.WriteLine($"  mod: {modName} hooked into ControlMaster (line grab, autosave)");
     changes++;
 }
 

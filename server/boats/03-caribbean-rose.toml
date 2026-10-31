@@ -1,0 +1,33 @@
+# Caribbean Rose: Sailaway boat type 3
+type = 3
+name = "Caribbean Rose"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "sailaway.world bdsnr 387"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 16.9
+features = ["long overhangs"]
+evidence = "Remote-boat mesh 16.9 m with special bow/stern overhang code; official Caribbean Rose (52 ft classic)."
+
+[specs]  # metres, tonnes, m^2
+lwl = 11.12
+mass = 10.0
+draught = 2.43
+area_up = 125.2  # main + largest headsail
+area_max = 125.2
+stern_width = 2.0
+no_go = 42  # closest true wind angle that sails
+source = "sailaway.world bdsnr 387"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 67.6
+genoa = 57.6
+jib = 37.8
+
+[polar]
+files = [{ file = "Swan_48.pol", weight = 1.0 }]
+note = ""
+

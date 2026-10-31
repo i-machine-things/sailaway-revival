@@ -13,15 +13,42 @@ Real polars override the generated ones: a Sailaway III "Export polar as CSV"
 file saved as <data dir>/polars/<boat type>.csv (not distributed with this
 project; each player downloads their own from sailaway.world).
 """
-import json
 import math
 import os
+import tomllib
 
-SPECS = {
-    int(k): v
-    for k, v in json.load(open(os.path.join(os.path.dirname(__file__), "boats.json"))).items()
-    if not k.startswith("_")
-}
+BOAT_DIR = os.path.join(os.path.dirname(__file__), "boats")
+
+
+def _load_spec(path):
+    """One boats/NN-name.toml file -> the flat spec dict used below."""
+    with open(path, "rb") as f:
+        d = tomllib.load(f)
+    sp = d["specs"]
+    spec = {
+        "name": d["name"],
+        "lwl": sp["lwl"],
+        "mass": sp["mass"],
+        "draught": sp["draught"],
+        "areaUp": sp["area_up"],
+        "areaMax": sp["area_max"],
+        "stern": sp["stern_width"],
+        "noGo": sp["no_go"],
+        "sails": d.get("sails", {}),
+        "polarFiles": [
+            [p["file"], p.get("weight", 1.0)] + ([p["froude"]] if "froude" in p else [])
+            for p in d.get("polar", {}).get("files", [])
+        ],
+    }
+    for toml_key, key in (("hulls", "hulls"), ("heel_max", "heelmax"), ("foils", "foils")):
+        if toml_key in sp:
+            spec[key] = sp[toml_key]
+    if "table" in d.get("polar", {}):
+        spec["polar"] = d["polar"]["table"]
+    return d["type"], spec
+
+
+SPECS = dict(_load_spec(os.path.join(BOAT_DIR, f)) for f in sorted(os.listdir(BOAT_DIR)) if f.endswith(".toml"))
 
 POLAR_DIR = os.path.join(
     os.path.expanduser(os.environ.get("SAILAWAY_DATA", "~/.local/share/sailaway-revival")), "polars"
@@ -216,18 +243,30 @@ def sail_area(areas, name, sized_from, depth=0):
     return round(sail_area(areas, base, base_sized_from, depth + 1) * factor, 1)
 
 
-def sail_data(btp):
-    """GetBoatInfo 'saildata': per-sail specs read in Sailing.Init (btsarea, ...).
+# Control values restored from saildata on load (Sailing.cs); the game's own
+# defaults (ControlNameLookUp) have only the main hoisted.
+SAIL_CONTROLS = ("salhalyard", "saldownhaul", "saluphaul", "salouthaul", "salvang", "salsheet",
+                 "saltraveller", "salfixation", "salreef1", "salreef2", "salreef3")
 
-    Without them every sail has zero area: it shows but makes no force.
-    Sails a boat's model doesn't have are ignored by the game.
+
+def sail_data(btp, saved=None):
+    """GetBoatInfo 'saildata': per-sail specs read in Sailing.Init (btsarea, ...)
+    plus each sail's control values, saved ones where the player has a save.
+
+    Without specs every sail has zero area: it shows but makes no force. Without
+    control values every sail would load lowered. Sails a boat's model doesn't
+    have are ignored by the game.
     """
+    saved = saved or {}
     areas = SPECS.get(btp, SPECS[1]).get("sails", {})
     out = [{"salidx": 0}]
     for idx, name, lo, hi, furls, sized_from in SAILS:
         area = sail_area(areas, name, sized_from)
         reefs = MAIN_REEFS if name in ("main", "mizzen") else (0, 0, 0)
-        out.append({
+        controls = {c: 0.0 for c in SAIL_CONTROLS}
+        controls["salhalyard"] = 1.0 if name == "main" else 0.0
+        controls.update(saved.get(str(idx), {}))
+        out.append(controls | {
             "salidx": idx,
             "btsarea": area,
             "btsminangle": lo,

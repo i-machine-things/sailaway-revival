@@ -41,10 +41,31 @@ python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
 Steam's "verify integrity of game files" restores the original DLL; re-run
 `./install.sh` afterwards.
 
+## Boats
+
+Each boat type has a file in `server/boats/` (TOML): which real boat it is and
+how sure we are, specs and sail areas with sources, the polar used, and curated
+sailing notes. Fix a boat with a small PR to its file.
+
+## Runtime log
+
+The server keeps a local SQLite log (`~/.local/share/sailaway-revival/runlog.sqlite`,
+never committed): your boat's track from every save, and test notes per boat type.
+
+```sh
+.venv/bin/python server/runlog.py note 6 "points higher than expected upwind"
+.venv/bin/python server/runlog.py notes [type]
+.venv/bin/python server/runlog.py track [boat] [n]
+```
+
+Findings worth keeping get promoted into the boat's TOML file.
+
 ## Gameplay changes
 
 - **Lines:** click a line to grab it, scroll to ease or pull, click again (or
-  press Esc) to let go. Press-and-drag still works. (`mod/LineGrab.cs`)
+  press Esc / right-click) to let go. Press-and-drag still works. (`mod/LineGrab.cs`)
+- **Autosave:** the boat is saved every minute; the game only did this through
+  the multiplayer server, so a crash lost the session. (`mod/AutoSave.cs`)
 
 ## Polars
 
@@ -72,7 +93,6 @@ held flat), drops impossible pointing angles and smooths out dips.
 
 Working: login, all 10 boats (each with its own saved position), sailing, live
 weather, detailed terrain/bathymetry.
-Approximate: boat polars are generated from each boat's real dimensions
-(`server/boats.json`, official Sailaway specs where available); real polars can
-be dropped in per boat.
+Approximate: boat specs, sails and polars come from the official Sailaway boat
+pages and similar real boats; see `server/boats/`.
 Not working: missions, multiplayer, chat, sea marks.

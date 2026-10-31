@@ -1,0 +1,39 @@
+# Sailaway Imoca 60: Sailaway boat type 10
+type = 10
+name = "Sailaway Imoca 60"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "sailaway.world bdsnr 389"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 20.0
+features = ["foils", "canting keel"]
+evidence = "20.0 m hull with foils; official Sailaway Imoca 60 (LOA 20.11 m)."
+
+[specs]  # metres, tonnes, m^2
+lwl = 16.95
+mass = 8.0
+draught = 4.5
+area_up = 319.6  # main + largest headsail
+area_max = 504.7
+stern_width = 5.5
+no_go = 36  # closest true wind angle that sails
+foils = true
+source = "sailaway.world bdsnr 389"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 191.0
+genoa = 115.3
+jib = 97.9
+gennaker = 256.7
+code0 = 257.4
+nr1 = 108.1
+nr4 = 55.3
+storm = 14.1
+
+[polar]
+files = [{ file = "Imoca_2015.pol", weight = 1.0 }]
+note = ""
+

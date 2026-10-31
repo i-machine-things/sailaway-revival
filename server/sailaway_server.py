@@ -10,6 +10,7 @@ import json
 import logging
 import math
 import os
+import re
 import threading
 import time
 import urllib.parse
@@ -18,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import appearance
 import boats
+import runlog
 import tiles
 
 HOST, PORT, PREFIX = "127.0.0.1", 18080, "/sw"
@@ -90,7 +92,7 @@ def boat_info(ubtnr):
             "ubtusrnr": STATE["user"]["usrnr"],
             "skillslevel": STATE["user"]["settings"].get("usrskillslevel", 3),
             "polars": boats.polars(b["ubtbtpnr"]),
-            "saildata": boats.sail_data(b["ubtbtpnr"]),
+            "saildata": boats.sail_data(b["ubtbtpnr"], b.get("sails", {})),
             "sailors": [],
             "deltatime": 0,
         }
@@ -228,16 +230,60 @@ def ep_login(form):
     return user_data()
 
 
+# Boat values UserBoat.GetSaveData sends, stored under the GetBoatInfo key "ubt" + name.
+SAVED_BOAT_VALUES = set(
+    "lat lon heading speed drift heel dive weatherhelm truewinddir truewindangle appwindangle "
+    "truewindspeed appwindspeed speedoverground courseoverground backstay diamondstay foill foilr "
+    "waterballast cantingkeel throttle autonavangle ranaground capsized".split()
+)
+# Per-sail controls, sent as "<control>_<sail index>", restored from saildata "sal<control>".
+SAVED_SAIL_CONTROLS = set(
+    "halyard downhaul uphaul outhaul vang sheet traveller fixation reef1 reef2 reef3".split()
+)
+KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def repair_pairs(pairs):
+    """Re-pairs UserBoat.GetSaveData's list, which has one unnamed value after
+    each sail's controls (sailData[i][8]); that shifts every later name/value
+    pair by one. Walk the flat list and take a value after each name."""
+    flat = [x for kv in pairs for x in kv]
+    out, i = {}, 0
+    while i + 1 < len(flat):
+        if KEY_RE.match(flat[i]):
+            out[flat[i]] = flat[i + 1]
+            i += 2
+        else:
+            i += 1  # the stray unnamed value
+    return out
+
+
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def ep_save_boat_values(form):
+    values = repair_pairs(form.get("__pairs", []))
     with _state_lock:
-        b = boat_state(form.get("ubtnr"))
-        for k, v in form.items():
-            if k.startswith("ubt") and k != "ubtnr":
-                try:
-                    b[k] = float(v)
-                except ValueError:
-                    b[k] = v
+        b = boat_state(values.get("ubtnr") or form.get("ubtnr"))
+        for k, v in values.items():
+            if k in SAVED_BOAT_VALUES and _num(v) is not None:
+                b["ubt" + k] = _num(v)
+            elif k.startswith("ubt") and k != "ubtnr":  # appearance and other ubt* fields
+                b[k] = _num(v) if _num(v) is not None else v
+            elif "_" in k:
+                control, _, idx = k.rpartition("_")
+                if control in SAVED_SAIL_CONTROLS and idx.isdigit() and _num(v) is not None:
+                    b.setdefault("sails", {}).setdefault(idx, {})["sal" + control] = _num(v)
         save_state(STATE)
+    if "lat" in values:
+        try:
+            runlog.record_track(b)
+        except Exception:
+            log.exception("runlog failed")
     return {"ubtnr": b["ubtnr"], "status": 0}
 
 
@@ -276,7 +322,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _form(self):
         parsed = urllib.parse.urlsplit(self.path)
-        form = dict(urllib.parse.parse_qsl(parsed.query))
+        pairs = urllib.parse.parse_qsl(parsed.query)
         length = int(self.headers.get("Content-Length") or 0)
         if length:
             body = self.rfile.read(length)
@@ -288,9 +334,11 @@ class Handler(BaseHTTPRequestHandler):
                 for part in msg.iter_parts():
                     name = part.get_param("name", header="content-disposition")
                     if name and not part.get_filename():
-                        form[name] = part.get_content()
+                        pairs.append((name, part.get_content()))
             else:
-                form.update(urllib.parse.parse_qsl(body.decode("utf-8", "replace")))
+                pairs += urllib.parse.parse_qsl(body.decode("utf-8", "replace"), keep_blank_values=True)
+        form = dict(pairs)
+        form["__pairs"] = pairs  # original order, for SaveBoatValues
         return parsed.path, form
 
     def _send(self, code, body, ctype):
@@ -316,10 +364,10 @@ class Handler(BaseHTTPRequestHandler):
         name = path.rsplit("/", 1)[-1]
         handler = ENDPOINTS.get(name)
         if handler is None:
-            log.info("UNHANDLED %s %s", name, form)
+            log.info("UNHANDLED %s %s", name, {k: v for k, v in form.items() if not k.startswith("__")})
             result = {}
         else:
-            log.info("%s %s", name, {k: v for k, v in form.items() if k != "CGISESSID"})
+            log.info("%s %s", name, {k: v for k, v in form.items() if k != "CGISESSID" and not k.startswith("__")})
             try:
                 result = handler(form)
             except Exception:
