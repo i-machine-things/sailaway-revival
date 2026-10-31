@@ -185,6 +185,63 @@ def polars(btp):
     ]
 
 
+# Sail slots by the game's sail index (ControlNameLookUp): name, sheeting angle
+# range in degrees off the centreline, whether it furls, and how to size it when
+# a boat's specs don't list it (multiple of another sail's area).
+SAILS = [
+    (1, "main", 0, 85, False, None),
+    (2, "genoa", 12, 60, True, ("jib", 1.6)),
+    (3, "jib", 9, 55, True, ("genoa", 0.6)),
+    (4, "gennaker", 20, 100, False, ("main", 2.1)),
+    (5, "spinnaker", 30, 110, False, ("gennaker", 1.1)),
+    (6, "nr4", 9, 50, True, ("jib", 0.6)),
+    (7, "code0", 15, 85, True, ("gennaker", 0.75)),
+    (8, "nr1", 11, 58, True, ("genoa", 1.0)),
+    (9, "nr2", 10, 56, True, ("genoa", 0.85)),
+    (10, "nr3", 10, 55, True, ("genoa", 0.7)),
+    (11, "storm", 10, 45, True, ("main", 0.12)),
+    (12, "mizzen", 0, 85, False, ("main", 0.4)),
+    (13, "mizzenstaysail", 20, 95, False, ("main", 0.75)),
+]
+MAIN_REEFS = (0.15, 0.30, 0.45)  # cumulative fraction of the main's area per reef
+
+
+def sail_area(areas, name, sized_from, depth=0):
+    if name in areas:
+        return areas[name]
+    if sized_from is None or depth > 3:
+        return 0.0
+    base, factor = sized_from
+    base_sized_from = next(s[5] for s in SAILS if s[1] == base)
+    return round(sail_area(areas, base, base_sized_from, depth + 1) * factor, 1)
+
+
+def sail_data(btp):
+    """GetBoatInfo 'saildata': per-sail specs read in Sailing.Init (btsarea, ...).
+
+    Without them every sail has zero area: it shows but makes no force.
+    Sails a boat's model doesn't have are ignored by the game.
+    """
+    areas = SPECS.get(btp, SPECS[1]).get("sails", {})
+    out = [{"salidx": 0}]
+    for idx, name, lo, hi, furls, sized_from in SAILS:
+        area = sail_area(areas, name, sized_from)
+        reefs = MAIN_REEFS if name in ("main", "mizzen") else (0, 0, 0)
+        out.append({
+            "salidx": idx,
+            "btsarea": area,
+            "btsminangle": lo,
+            "btsmaxangle": hi,
+            "btsfurls": 1 if furls else 0,
+            "btsreef1": reefs[0],
+            "btsreef2": reefs[1],
+            "btsreef3": reefs[2],
+            "btssteereffect": 0,  # per-sail weather-helm sign unknown; neutral is safe
+            "btstraveller": 10 if name in ("main", "mizzen") else 7,
+        })
+    return out
+
+
 def physics(btp):
     """The btp* fields GetBoatInfo returned (see UserBoat.BackendSucceeded)."""
     s = SPECS.get(btp, SPECS[1])

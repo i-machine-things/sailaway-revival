@@ -90,7 +90,7 @@ def boat_info(ubtnr):
             "ubtusrnr": STATE["user"]["usrnr"],
             "skillslevel": STATE["user"]["settings"].get("usrskillslevel", 3),
             "polars": boats.polars(b["ubtbtpnr"]),
-            "saildata": b.get("saildata", []),
+            "saildata": boats.sail_data(b["ubtbtpnr"]),
             "sailors": [],
             "deltatime": 0,
         }
