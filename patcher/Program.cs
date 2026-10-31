@@ -50,6 +50,31 @@ il.Emit(OpCodes.Ret);
 Console.WriteLine("  StateMachine.timeSynced -> always true");
 changes++;
 
-asm.Write(dll);
+// 3. Boat control (lines, helm, teleport) is gated on mastership, which only the
+//    multiplayer server ever granted. Offline the player is always the master.
+var userBoat = module.GetType("UserBoat");
+var master = userBoat.Properties.First(p => p.Name == "hasMastership").GetMethod;
+il = master.Body.GetILProcessor();
+master.Body.Instructions.Clear();
+master.Body.ExceptionHandlers.Clear();
+il.Emit(OpCodes.Ldc_I4_1);
+il.Emit(OpCodes.Ret);
+Console.WriteLine("  UserBoat.hasMastership -> always true");
+changes++;
+
+// Write beside the DLL and swap it in, so a half-written file never replaces it.
+string tmp = dll + ".tmp";
+asm.Write(tmp);
+asm.Dispose();
+try
+{
+    File.Move(tmp, dll, overwrite: true);
+}
+catch (IOException e)
+{
+    File.Delete(tmp);
+    Console.Error.WriteLine($"could not replace {dll} ({e.Message}). Close Sailaway and run the patcher again.");
+    return 2;
+}
 Console.WriteLine($"done, {changes} changes written to {dll}");
 return 0;

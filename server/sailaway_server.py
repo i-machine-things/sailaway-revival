@@ -16,6 +16,7 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import appearance
 import boats
 import tiles
 
@@ -81,6 +82,7 @@ def boat_info(ubtnr):
             STATE["user"]["ubtnr"] = b["ubtnr"]  # the game switches boats by asking for one
             save_state(STATE)
     info = boats.physics(b["ubtbtpnr"])
+    info.update(appearance.defaults(b["ubtbtpnr"]))  # saved customisations win below
     info.update(b)
     info.update(
         {
@@ -227,6 +229,12 @@ def ep_environment(form):
     return {"environment": environment(float(form.get("lat", 0)), float(form.get("lon", 0)))}
 
 
+def ep_nearest_water(form):
+    lat, lon = float(form.get("lat", 0)), float(form.get("lon", 0))
+    found = tiles.nearest_water(lat, lon, float(form.get("minDepth", 3)), TILE_DIR)
+    return {"lat": found[0], "lon": found[1]}
+
+
 ENDPOINTS = {
     "GetSolarSystem.pl": lambda f: {"solarsystem": []},
     "GetAllBadges.pl": lambda f: {"badges": []},
@@ -240,6 +248,7 @@ ENDPOINTS = {
     "getenvironment.pl": ep_environment,
     "GetUserBoats.pl": user_boats,
     "UserWorldEdit.pl": lambda f: {"UserWorldEdits": []},
+    "NearestWater.pl": ep_nearest_water,
 }
 
 

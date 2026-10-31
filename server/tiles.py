@@ -203,6 +203,58 @@ def build_tile(name):
     return encode(build_heights(level, lat0, lon0))
 
 
+def decode(data):
+    v = np.frombuffer(data, ">u2").astype(np.int32) - 32768
+    n = round(math.sqrt(v.size))
+    h = np.where(v >= 1000, (v - 1000) / 2 + 100, np.where(v < -1000, (v + 1000) / 2 - 100, v / 10))
+    return h.reshape(n, n)
+
+
+def tile_path(tile_dir, level, lat, lon):
+    """Where the server caches the tile containing (lat, lon); same naming as the game."""
+    deg = TILE_DEG[level]
+    lat0, lon0 = math.floor(lat / deg) * deg, math.floor(lon / deg) * deg
+    num = 40000000 + round((lat0 + 90) * 4) * 10000 + round((lon0 + 180) * 4) % 1440
+    folder = "HG%d" % level + (("N" if num >= 43600000 else "S") if level == 1 else "")
+    return os.path.join(tile_dir, folder, "%d.HG%d" % (num, level)), lat0, lon0, deg
+
+
+def _nearest_deep(h, lat0, lon0, deg, lat, lon, min_depth):
+    n = h.shape[0]
+    rows, cols = np.nonzero(h <= -min_depth)
+    if rows.size == 0:
+        return None
+    lats = lat0 + rows * deg / n
+    lons = lon0 + cols * deg / n
+    d2 = (lats - lat) ** 2 + ((lons - lon) * math.cos(math.radians(lat))) ** 2
+    i = int(np.argmin(d2))
+    return float(lats[i]), float(lons[i])
+
+
+def nearest_water(lat, lon, min_depth, tile_dir):
+    """Closest point at least min_depth deep, for teleporting (NearestWater.pl).
+
+    Uses detailed tiles already cached around the spot, else ETOPO in widening
+    windows.  A metre of margin keeps the boat off the edge of the shallows.
+    """
+    min_depth += 1.0
+    for level in (1, 2, 3):
+        path, lat0, lon0, deg = tile_path(tile_dir, level, lat, lon)
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                found = _nearest_deep(decode(f.read()), lat0, lon0, deg, lat, lon, min_depth)
+            if found:
+                return found
+    with rasterio.Env(**GDAL_ENV):
+        for r in (0.25, 1.0, 4.0):
+            n = min(round(2 * r * 240), 960)
+            h = _etopo(lat - r, lon - r, 2 * r, n)
+            found = _nearest_deep(np.nan_to_num(h, nan=0.0), lat - r, lon - r, 2 * r, lat, lon, min_depth)
+            if found:
+                return found
+    return lat, lon
+
+
 if __name__ == "__main__":
     import sys
     import time

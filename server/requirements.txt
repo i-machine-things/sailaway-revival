@@ -1,2 +1,3 @@
 rasterio>=1.4
 numpy
+UnityPy>=1.20
