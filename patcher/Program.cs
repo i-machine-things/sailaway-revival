@@ -9,6 +9,15 @@ if (args.Length < 1)
     Console.Error.WriteLine("usage: patcher <Sailaway_Data/Managed dir> [server host[:port][/prefix]]");
     return 1;
 }
+// Replacing the DLL under a running game crashes it (Mono reads the file again
+// after startup, even under Wine), so refuse instead.
+if (System.Diagnostics.Process.GetProcesses().Any(p =>
+        p.ProcessName.Equals("Sailaway", StringComparison.OrdinalIgnoreCase) ||
+        p.ProcessName.Equals("Sailaway.exe", StringComparison.OrdinalIgnoreCase)))
+{
+    Console.Error.WriteLine("Sailaway is running. Close the game, then run the patcher again.");
+    return 3;
+}
 string managed = args[0];
 string server = args.Length > 1 ? args[1] : "127.0.0.1:18080/sw";
 string dll = Path.Combine(managed, "Assembly-CSharp.dll");
