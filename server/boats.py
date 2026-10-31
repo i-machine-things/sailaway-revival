@@ -258,7 +258,8 @@ def sail_data(btp, saved=None):
     have are ignored by the game.
     """
     saved = saved or {}
-    areas = SPECS.get(btp, SPECS[1]).get("sails", {})
+    spec = SPECS.get(btp, SPECS[1])
+    areas = spec.get("sails", {})
     out = [{"salidx": 0}]
     for idx, name, lo, hi, furls, sized_from in SAILS:
         area = sail_area(areas, name, sized_from)
@@ -268,7 +269,9 @@ def sail_data(btp, saved=None):
         controls.update(saved.get(str(idx), {}))
         out.append(controls | {
             "salidx": idx,
-            "btsarea": area,
+            # A share of the boat's reference area (btparea, m^2), not m^2 itself:
+            # Sailing.cs scales GetSailArea() by userBoat.area and clamps totals to 0..1/3.
+            "btsarea": round(area / spec["areaUp"], 4),
             "btsminangle": lo,
             "btsmaxangle": hi,
             "btsfurls": 1 if furls else 0,

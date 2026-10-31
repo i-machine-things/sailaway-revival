@@ -11,6 +11,7 @@ import logging
 import math
 import os
 import re
+import socket
 import threading
 import time
 import urllib.parse
@@ -355,6 +356,8 @@ class Handler(BaseHTTPRequestHandler):
         self.handle_request()
 
     def handle_request(self):
+        global _last_request
+        _last_request = time.time()
         path, form = self._form()
         if not path.startswith(PREFIX + "/"):
             return self._send(404, b"", "text/plain")
@@ -409,11 +412,42 @@ def build_tile_file(name, full):
         log.info("built tile %s in %.1fs", name, time.time() - t)
 
 
+SYSTEMD_FIRST_FD = 3
+IDLE_EXIT_SECONDS = 30 * 60  # socket-activated only: systemd restarts us on demand
+_last_request = time.time()
+
+
+def systemd_socket():
+    """The listening socket systemd passed us (socket activation), if any."""
+    if os.environ.get("LISTEN_PID") != str(os.getpid()) or int(os.environ.get("LISTEN_FDS", "0")) < 1:
+        return None
+    return socket.socket(fileno=SYSTEMD_FIRST_FD)
+
+
+def exit_when_idle(server):
+    while True:
+        time.sleep(60)
+        if time.time() - _last_request > IDLE_EXIT_SECONDS:
+            log.info("idle for %d minutes, exiting until the game connects again", IDLE_EXIT_SECONDS // 60)
+            server.shutdown()
+            return
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
     os.makedirs(TILE_DIR, exist_ok=True)
-    log.info("Sailaway stand-in server on http://%s:%d%s (data in %s)", HOST, PORT, PREFIX, DATA_DIR)
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    sock = systemd_socket()
+    if sock:
+        server = ThreadingHTTPServer(sock.getsockname()[:2], Handler, bind_and_activate=False)
+        server.socket = sock
+        threading.Thread(target=exit_when_idle, args=(server,), daemon=True).start()
+        how = "socket-activated by systemd"
+    else:
+        server = ThreadingHTTPServer((HOST, PORT), Handler)
+        how = "listening"
+    log.info("Sailaway stand-in server %s on http://%s:%d%s (data in %s)",
+             how, *server.server_address[:2], PREFIX, DATA_DIR)
+    server.serve_forever()
 
 
 if __name__ == "__main__":

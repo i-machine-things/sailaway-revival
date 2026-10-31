@@ -1,0 +1,9 @@
+[Unit]
+Description=Sailaway Revival stand-in server
+Requires=sailaway-revival.socket
+After=sailaway-revival.socket
+
+[Service]
+ExecStart=@PYTHON@ -u @REPO@/server/sailaway_server.py
+WorkingDirectory=@REPO@
+Restart=on-failure
