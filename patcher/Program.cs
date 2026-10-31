@@ -62,6 +62,20 @@ il.Emit(OpCodes.Ret);
 Console.WriteLine("  UserBoat.hasMastership -> always true");
 changes++;
 
+// 4. Grabbing a line or the helm first locks it against other crew. The lock
+//    fails offline because the multiplayer controller never learns our boat
+//    number, so every manual adjustment was refused. Single player: always grant.
+var mu = module.GetType("MultiuserCtrl");
+var lockControl = mu.Methods.First(m => m.Name == "LockControl");
+il = lockControl.Body.GetILProcessor();
+lockControl.Body.Instructions.Clear();
+lockControl.Body.ExceptionHandlers.Clear();
+lockControl.Body.Variables.Clear();
+il.Emit(OpCodes.Ldc_I4_1);
+il.Emit(OpCodes.Ret);
+Console.WriteLine("  MultiuserCtrl.LockControl -> always true");
+changes++;
+
 // Write beside the DLL and swap it in, so a half-written file never replaces it.
 string tmp = dll + ".tmp";
 asm.Write(tmp);
