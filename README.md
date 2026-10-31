@@ -9,7 +9,8 @@ Nothing in this repository contains the developer's code or assets. It holds:
   by the patcher
 - **patcher/**: patches *your own* `Assembly-CSharp.dll` in place, keeping a
   `.orig` backup. It always re-patches from the backup, so it can be re-run safely.
-  - points the game at the stand-in server (default `127.0.0.1:18080/sw`)
+  - points the game at the stand-in server (`127.0.0.1:<port>/sw`; the port is
+    chosen by install.sh and kept in `~/.config/sailaway-revival/config.toml`)
   - marks the clock as synced (that used to come from the dead multiplayer server)
 - **server/**: a stand-in for the game's web server
   - login / user / boat state (saved in `~/.local/share/sailaway-revival/state.json`)

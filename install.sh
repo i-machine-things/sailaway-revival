@@ -39,14 +39,39 @@ DOTNET="$(command -v dotnet || true)"
 export DOTNET_ROOT="${DOTNET_ROOT:-$(dirname "$(readlink -f "$DOTNET")")}"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-# --- 1. mod + patch --------------------------------------------------------
-say "Building the mod and patching the game"
-"$DOTNET" build mod -c Release -p:GameManaged="$MANAGED" -o build/mod --nologo -v quiet
-if [ -n "$2" ]; then
-    "$DOTNET" run --project patcher -- "$MANAGED" "$2" --mod build/mod/SailawayRevival.Mod.dll
-else
-    "$DOTNET" run --project patcher -- "$MANAGED" --mod build/mod/SailawayRevival.Mod.dll
+# --- port ------------------------------------------------------------------
+# The game is patched with a fixed address, so pick the port here and keep it
+# in the config the server reads. Re-runs keep the same port unless another
+# program has taken it.
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sailaway-revival"
+CONFIG="$CONFIG_DIR/config.toml"
+PORT=47652
+if [ -f "$CONFIG" ]; then
+    PORT="$(sed -n 's/^port *= *\([0-9]*\).*/\1/p' "$CONFIG" | head -1)"
+    [ -n "$PORT" ] || PORT=47652
 fi
+port_free() {
+    python3 -c 'import socket,sys; s=socket.socket(); s.bind(("127.0.0.1", int(sys.argv[1])))' "$1" 2>/dev/null
+}
+port_ours() {  # held by our own server or socket from an earlier install
+    curl -s -m 3 "http://127.0.0.1:$1/sw/cgi-bin/sailaway/GetAllBadges.pl" 2>/dev/null | grep -q '"badges"'
+}
+if ! port_free "$PORT" && ! port_ours "$PORT"; then
+    echo "port $PORT is used by another program; looking for a free one"
+    tries=0
+    while ! port_free "$PORT"; do
+        PORT=$((PORT + 1)); tries=$((tries + 1))
+        [ "$tries" -lt 100 ] || die "no free port found near $PORT"
+    done
+fi
+mkdir -p "$CONFIG_DIR"
+printf '# written by install.sh; the game is patched for this port\nport = %s\n' "$PORT" > "$CONFIG"
+SERVER="${2:-127.0.0.1:$PORT/sw}"
+
+# --- 1. mod + patch --------------------------------------------------------
+say "Building the mod and patching the game (server $SERVER)"
+"$DOTNET" build mod -c Release -p:GameManaged="$MANAGED" -o build/mod --nologo -v quiet
+"$DOTNET" run --project patcher -- "$MANAGED" "$SERVER" --mod build/mod/SailawayRevival.Mod.dll
 
 # --- 2. server environment -------------------------------------------------
 say "Setting up the server"
@@ -69,7 +94,7 @@ if command -v systemctl >/dev/null && systemctl --user show-environment >/dev/nu
     say "Installing the systemd user socket"
     UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
     mkdir -p "$UNITS"
-    cp packaging/systemd/sailaway-revival.socket "$UNITS/"
+    sed -e "s|@PORT@|$PORT|" packaging/systemd/sailaway-revival.socket.in > "$UNITS/sailaway-revival.socket"
     sed -e "s|@PYTHON@|$REPO/.venv/bin/python|" -e "s|@REPO@|$REPO|" \
         packaging/systemd/sailaway-revival.service.in > "$UNITS/sailaway-revival.service"
     systemctl --user daemon-reload

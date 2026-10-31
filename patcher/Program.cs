@@ -28,7 +28,7 @@ if (System.Diagnostics.Process.GetProcesses().Any(p =>
     return 3;
 }
 string managed = positional[0];
-string server = positional.Count > 1 ? positional[1] : "127.0.0.1:18080/sw";
+string server = positional.Count > 1 ? positional[1] : "127.0.0.1:47652/sw";
 string dll = Path.Combine(managed, "Assembly-CSharp.dll");
 string orig = dll + ".orig";
 if (!File.Exists(orig))

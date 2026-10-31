@@ -14,6 +14,7 @@ import re
 import socket
 import threading
 import time
+import tomllib
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,7 +24,23 @@ import boats
 import runlog
 import tiles
 
-HOST, PORT, PREFIX = "127.0.0.1", 18080, "/sw"
+DEFAULT_PORT = 47652
+CONFIG_FILE = os.path.join(
+    os.path.expanduser(os.environ.get("XDG_CONFIG_HOME", "~/.config")), "sailaway-revival", "config.toml"
+)
+
+
+def load_config():
+    """Port the game was patched for; written by install.sh (config.toml: port = N)."""
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            return tomllib.load(f)
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+
+HOST, PREFIX = "127.0.0.1", "/sw"
+PORT = int(os.environ.get("SAILAWAY_PORT") or load_config().get("port", DEFAULT_PORT))
 DATA_DIR = os.path.expanduser(os.environ.get("SAILAWAY_DATA", "~/.local/share/sailaway-revival"))
 TILE_DIR = os.path.join(DATA_DIR, "tiles")
 STATE_FILE = os.path.join(DATA_DIR, "state.json")
@@ -443,7 +460,13 @@ def main():
         threading.Thread(target=exit_when_idle, args=(server,), daemon=True).start()
         how = "socket-activated by systemd"
     else:
-        server = ThreadingHTTPServer((HOST, PORT), Handler)
+        try:
+            server = ThreadingHTTPServer((HOST, PORT), Handler)
+        except OSError as e:
+            log.error("cannot listen on %s:%d (%s). Another program is using the port, or the server "
+                      "is already running (systemd socket?). Re-run install.sh to pick a free port.",
+                      HOST, PORT, e.strerror)
+            raise SystemExit(1)
         how = "listening"
     log.info("Sailaway stand-in server %s on http://%s:%d%s (data in %s)",
              how, *server.server_address[:2], PREFIX, DATA_DIR)
