@@ -1,0 +1,70 @@
+# Mini Transat: Sailaway boat type 2
+type = 2
+name = "Mini Transat"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "sailaway.world bdsnr 2"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 6.8
+features = ["water ballast", "canting keel"]
+evidence = "Hull mesh is named PogoHull (6.8 m); code gives it water ballast and a canting keel. Official Mini Transat."
+
+[specs]  # metres, tonnes, m^2
+lwl = 6.69
+mass = 0.917
+draught = 2.23
+area_up = 35.8  # main + largest headsail
+area_max = 73.2
+stern_width = 3.0
+no_go = 38  # closest true wind angle that sails
+source = "sailaway.world bdsnr 2"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 21.6
+jib = 14.2
+gennaker = 51.6
+code0 = 43.0
+
+[polar]
+files = [{ file = "Pogo_650.pol", weight = 1.0 }]
+note = "Pogo 6.50"
+
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 2 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.894
+stabilityadj = 0.99635
+
+[[sail_slots]]
+idx = 1
+area = 21.63
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 3
+area = 51.57
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 14.15
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 6
+area = 43.02
+minangle = 0
+maxangle = 75
+
+[[sail_slots]]
+idx = 10
+area = 10.36
+minangle = 0
+maxangle = 70
+

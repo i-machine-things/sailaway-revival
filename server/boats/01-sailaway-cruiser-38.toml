@@ -1,0 +1,63 @@
+# Sailaway Cruiser 38: Sailaway boat type 1
+type = 1
+name = "Sailaway Cruiser 38"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "sailaway.world bdsnr 1"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 13.0
+features = []
+evidence = "Remote-boat mesh 13.0 m LOA, 3.9 m beam, 16.8 m mast; matches the official Cruiser 38 (LOA 13.70 m)."
+
+[specs]  # metres, tonnes, m^2
+lwl = 11.92
+mass = 8.2
+draught = 2.78
+area_up = 74.0  # main + largest headsail
+area_max = 120.4
+stern_width = 3.4
+no_go = 40  # closest true wind angle that sails
+source = "sailaway.world bdsnr 1"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 38.1
+genoa = 35.8
+jib = 19.3
+gennaker = 82.3
+
+[polar]
+files = [{ file = "Bavaria_38Cruiser.pol", weight = 1.0 }]
+note = ""
+
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 1 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.566
+
+[[sail_slots]]
+idx = 1
+area = 38.13
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 3
+area = 82.27
+minangle = 11
+maxangle = 70
+
+[[sail_slots]]
+idx = 4
+area = 35.84
+minangle = 13
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 19.27
+minangle = 14
+maxangle = 70
+

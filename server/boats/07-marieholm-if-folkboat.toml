@@ -1,0 +1,32 @@
+# Marieholm IF Folkboat: Sailaway boat type 7
+type = 7
+name = "Marieholm IF Folkboat"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "median of 11 Marieholm IF ORC certificates"
+
+[identity]
+confidence = "low"  # how sure we are this game type is this boat
+hull_mesh_length_m = 7.9
+features = []
+evidence = "Same hull size as type 6 with a different, larger config. Assumed to be the cabin (Marieholm IF) Folkboat; the game does not name it."
+
+[specs]  # metres, tonnes, m^2
+lwl = 6.0
+mass = 2.15
+draught = 1.2
+area_up = 31.5  # main + largest headsail
+area_max = 31.5
+stern_width = 1.3
+no_go = 42  # closest true wind angle that sails
+source = "assumed: the game's second Folkboat hull (same mesh size as 6); specs and polar: median of 11 Marieholm IF ORC certificates"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 17.0
+genoa = 14.6
+
+[polar]
+files = [{ file = "Marieholm_IF.pol", weight = 1.0 }]
+note = "median of 11 Marieholm IF ORC certificates"
+

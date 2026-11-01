@@ -1,0 +1,37 @@
+# 52' Cruising Catamaran: Sailaway boat type 4
+type = 4
+name = "52' Cruising Catamaran"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "Lagoon 52: main/jib sailboatdata.com; genoa 70, code 0 152, gennaker 255 from Wikipedia and Multihulls World"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 15.4
+features = ["two hulls"]
+evidence = "Hull 13.7 m with 6.1 m beam (two hulls); the original game listed a 52' Cruising Catamaran."
+
+[specs]  # metres, tonnes, m^2
+lwl = 15.2
+mass = 26.0
+draught = 1.55
+area_up = 166.0  # main + largest headsail
+area_max = 250.0
+stern_width = 0.7
+no_go = 48  # closest true wind angle that sails
+hulls = 2
+heel_max = 6
+source = "polar: Lagoon 380/560 blended by length; sailboatdata.com Lagoon 52 (LOA 15.85, 26038 kg, main 107 + jib 59 m^2); LWL estimated"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 107.0
+genoa = 70.0
+jib = 59.0
+gennaker = 255.0
+code0 = 152.0
+
+[polar]
+files = [{ file = "Lagoon_380.pol", weight = 0.22 }, { file = "Lagoon_560.pol", weight = 0.78 }]
+note = "Lagoon 380/560 blended by length"
+

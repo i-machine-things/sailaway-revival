@@ -1,0 +1,32 @@
+# 50' Performance Cruiser: Sailaway boat type 5
+type = 5
+name = "50' Performance Cruiser"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "X-50 on sailboatdata.com: main 66.86, foretriangle 57.79 (rig I/J/P/E)"
+
+[identity]
+confidence = "medium"  # how sure we are this game type is this boat
+hull_mesh_length_m = 14.9
+features = ["water ballast", "canting keel"]
+evidence = "Hull 14.9 m (~50 ft); the original game listed a 50' Performance Cruiser. Not on the Sailaway III site; code features suggest a performance boat."
+
+[specs]  # metres, tonnes, m^2
+lwl = 13.14
+mass = 12.4
+draught = 2.8
+area_up = 124.7  # main + largest headsail
+area_max = 250.0
+stern_width = 4.2
+no_go = 38  # closest true wind angle that sails
+source = "sailboatdata.com X-50 (LWL 43.1 ft, 27337 lb, SA 1342 ft^2) as nearest performance-cruiser match"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 66.9
+genoa = 57.8
+
+[polar]
+files = [{ file = "X50.pol", weight = 1.0 }]
+note = ""
+

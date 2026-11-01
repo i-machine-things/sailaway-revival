@@ -1,0 +1,8 @@
+[Unit]
+Description=Sailaway Revival stand-in server (starts when the game connects)
+
+[Socket]
+ListenStream=127.0.0.1:@PORT@
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,51 @@
+# Nordic Folkboat: Sailaway boat type 6
+type = 6
+name = "Nordic Folkboat"
+notes = """
+Sailing notes and known issues; promote findings here from the runtime log.
+"""
+sails_source = "median of 10 Nordic Folkboat ORC certificates"
+
+[identity]
+confidence = "high"  # how sure we are this game type is this boat
+hull_mesh_length_m = 7.9
+features = []
+evidence = "7.9 m hull with the smallest boat config; the original game listed a Nordic Folkboat."
+
+[specs]  # metres, tonnes, m^2
+lwl = 6.29
+mass = 1.93
+draught = 1.25
+area_up = 24.6  # main + largest headsail
+area_max = 24.6
+stern_width = 1.2
+no_go = 42  # closest true wind angle that sails
+source = "sailaway.world bdsnr 361"
+
+[sails]  # m^2; unlisted sails are sized from these (boats.py SAILS)
+main = 18.4
+jib = 7.3
+
+[polar]
+files = [{ file = "Nordic_Folkboat.pol", weight = 1.0 }]
+note = "median of 10 Nordic Folkboat ORC certificates"
+
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 361 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.917
+dragadj = 0.9165
+stabilityadj = 1.5
+
+[[sail_slots]]
+idx = 1
+area = 16.89
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 7.74
+minangle = 0
+maxangle = 70
+
