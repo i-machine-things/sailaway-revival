@@ -11,6 +11,7 @@ namespace SailawayRevival
         public static void ControlMasterUpdate(ControlMaster master)
         {
             BoatSwitcher.EnsureCreated();
+            Buildings.EnableIfFound();
             LineGrab.PreUpdate(master);
             AutoSave.Tick();
         }

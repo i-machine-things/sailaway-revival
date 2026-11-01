@@ -371,6 +371,25 @@ def ep_nearest_water(form):
     return {"lat": found[0], "lon": found[1]}
 
 
+def ep_overpass(form):
+    # The patcher points Backend.GetOSM{High,Low}Buildings here instead of
+    # overpass-api.de directly: this old Unity build's bundled TLS stack
+    # can't complete an HTTPS handshake with arbitrary hosts anymore (same
+    # failure as Unity's own telemetry endpoints). Proxy with our own,
+    # unaffected TLS stack and pass the real Overpass JSON straight through.
+    try:
+        q = urllib.parse.urlencode({"data": form.get("data", "")})
+        req = urllib.request.Request(
+            "https://overpass-api.de/api/interpreter?" + q,
+            headers={"User-Agent": "sailaway-revival (github.com/i-machine-things/sailaway-revival)"},
+        )
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.load(r)
+    except Exception:
+        log.exception("overpass proxy failed")
+        return {"elements": []}  # OSMBuildings does GetArrayList(returnData, "elements").Count
+
+
 ENDPOINTS = {
     "GetSolarSystem.pl": lambda f: {"solarsystem": []},
     "GetAllBadges.pl": lambda f: {"badges": []},
@@ -393,6 +412,7 @@ ENDPOINTS = {
     # MainMenu.Show() again.
     "GetFeatured.pl": lambda f: {"featured": []},
     "Invitations.pl": lambda f: {"openinvitations": []},
+    "overpass": ep_overpass,
 }
 
 

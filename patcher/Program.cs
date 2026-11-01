@@ -54,6 +54,18 @@ foreach (var ins in method.Body.Instructions)
         Console.WriteLine($"  url: {type.Name}.{method.Name}: {s} -> {ins.Operand}");
         changes++;
     }
+    // Backend.GetOSM{High,Low}Buildings hit the real, still-live public
+    // Overpass API directly over HTTPS - but this old Unity build's bundled
+    // TLS stack can't complete a handshake with it (Curl error 35/UnityTls
+    // error 7, confirmed in Player.log, same failure as Unity's own
+    // telemetry endpoints - not Overpass-specific). Route it through our own
+    // server instead, the same way weather already proxies from Open-Meteo.
+    else if (ins.OpCode == OpCodes.Ldstr && ins.Operand is string s2 && s2.Contains("https://overpass-api.de/api/interpreter"))
+    {
+        ins.Operand = s2.Replace("https://overpass-api.de/api/interpreter", "http://" + server + "/overpass");
+        Console.WriteLine($"  url: {type.Name}.{method.Name}: overpass-api.de -> local proxy");
+        changes++;
+    }
 }
 
 // 2. Time sync only ever came from the multiplayer server; the clock already
