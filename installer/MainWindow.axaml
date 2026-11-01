@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SailawayRevival.Installer.ViewModels"
+        x:Class="SailawayRevival.Installer.MainWindow"
+        x:DataType="vm:InstallViewModel"
+        Title="Sailaway Revival Installer"
+        Width="640" Height="480">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
+    <TextBlock Grid.Row="0" Text="{Binding Status}" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
+    <ProgressBar Grid.Row="1" Minimum="0" Maximum="100" Value="{Binding Progress}" Margin="0,0,0,8" />
+    <Border Grid.Row="2" BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,8">
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Log}" Margin="8">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" FontFamily="monospace" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Name="BrowseButton" Content="Browse for Sailaway folder..." IsVisible="{Binding NeedsManualGamePath}" />
+      <Button Name="InstallButton" Content="Install" IsEnabled="{Binding !Installing}" />
+    </StackPanel>
+  </Grid>
+</Window>

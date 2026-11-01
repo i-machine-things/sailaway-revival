@@ -3,6 +3,8 @@ patcher/bin/
 patcher/obj/
 mod/bin/
 mod/obj/
+installer/bin/
+installer/obj/
 __pycache__/
 .venv/
 # never commit game code or game data
