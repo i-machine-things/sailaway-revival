@@ -14,8 +14,17 @@ public static class ServerConfig
 {
     const int DefaultPort = 47652;
 
+    // Must match CONFIG_FILE in server/sailaway_server.py on every OS: that
+    // code always uses ~/.config (or $XDG_CONFIG_HOME), unconditionally,
+    // never an OS-specific special folder. SpecialFolder.ApplicationData
+    // would silently diverge on Windows (%APPDATA%, not ~/.config), causing
+    // the server to fall back to the default port while the game is patched
+    // for whatever port this picked - a CodeRabbit catch on PR #6.
     public static string ConfigDir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "sailaway-revival");
+        Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } xdg
+            ? xdg
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config"),
+        "sailaway-revival");
 
     static string ConfigPath => Path.Combine(ConfigDir, "config.toml");
 

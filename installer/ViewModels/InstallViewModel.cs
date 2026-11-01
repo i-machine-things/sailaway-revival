@@ -47,11 +47,14 @@ public class InstallViewModel : INotifyPropertyChanged
 
     void AppendLog(string line)
     {
-        // Avalonia's dispatcher requirement for cross-thread UI updates is
-        // handled by the caller awaiting on the UI thread throughout (no
-        // background Task.Run is used), so this can update the collection
-        // directly.
-        Log.Add(line);
+        // ProcessRunner.RunAsync's onLine callback fires from Process's
+        // OutputDataReceived/ErrorDataReceived events, which .NET raises on
+        // a thread-pool thread, not the caller's thread - awaiting the
+        // process exit doesn't change that. Mutating the bound
+        // ObservableCollection off the UI thread can throw inside Avalonia
+        // or corrupt it if stdout/stderr fire concurrently. A CodeRabbit
+        // catch on PR #6; the removed comment here was simply wrong.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => Log.Add(line));
     }
 
     public async Task RunInstallAsync()
@@ -84,7 +87,7 @@ public class InstallViewModel : INotifyPropertyChanged
 
             Status = "Checking for the .NET SDK...";
             Progress = 15;
-            var dotnet = DotnetBootstrap.FindDotnet();
+            var dotnet = await DotnetBootstrap.FindDotnet();
             if (dotnet == null)
             {
                 AppendLog("Installing the .NET 8 SDK (no root needed)...");

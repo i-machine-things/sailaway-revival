@@ -14,16 +14,33 @@ public static class DotnetBootstrap
     static string DefaultInstallDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet");
 
-    public static string? FindDotnet()
+    // A "dotnet" on PATH can be a runtime-only install (common - plenty of
+    // machines have the ASP.NET/.NET runtime for some other app but not the
+    // SDK). Accepting one of those here means ModPatcher's later `dotnet
+    // build` fails with no SDK bootstrap ever having run - a CodeRabbit
+    // catch on PR #6. So this has to actually run the candidate and check
+    // `--list-sdks`, not just confirm the file exists.
+    public static async Task<string?> FindDotnet()
     {
         var onPath = FindOnPath();
-        if (onPath != null)
+        if (onPath != null && await HasRequiredSdkAsync(onPath))
         {
             return onPath;
         }
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "dotnet.exe" : "dotnet";
         var defaultPath = Path.Combine(DefaultInstallDir, exeName);
-        return File.Exists(defaultPath) ? defaultPath : null;
+        if (File.Exists(defaultPath) && await HasRequiredSdkAsync(defaultPath))
+        {
+            return defaultPath;
+        }
+        return null;
+    }
+
+    static async Task<bool> HasRequiredSdkAsync(string dotnetExe)
+    {
+        var lines = new List<string>();
+        var result = await ProcessRunner.RunAsync(dotnetExe, "--list-sdks", lines.Add);
+        return result.ExitCode == 0 && lines.Any(l => l.StartsWith("8."));
     }
 
     static string? FindOnPath()

@@ -19,7 +19,7 @@ class Program
         }
         if (args.Contains("--test-dotnet"))
         {
-            var dotnet = DotnetBootstrap.FindDotnet();
+            var dotnet = DotnetBootstrap.FindDotnet().GetAwaiter().GetResult();
             Console.WriteLine(dotnet != null ? $"DotnetBootstrap.FindDotnet() -> {dotnet}" : "not found");
             return dotnet != null ? 0 : 1;
         }
@@ -43,7 +43,7 @@ class Program
         }
         if (args.Contains("--test-patch"))
         {
-            var dotnet = DotnetBootstrap.FindDotnet() ?? throw new InvalidOperationException("no dotnet found");
+            var dotnet = DotnetBootstrap.FindDotnet().GetAwaiter().GetResult() ?? throw new InvalidOperationException("no dotnet found");
             var game = SteamLocator.FindGame() ?? throw new InvalidOperationException("no game found");
             var managed = Path.Combine(game, "Sailaway_Data", "Managed");
             var repoDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
