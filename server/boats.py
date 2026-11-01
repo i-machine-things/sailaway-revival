@@ -35,6 +35,7 @@ def _load_spec(path):
         "stern": sp["stern_width"],
         "noGo": sp["no_go"],
         "sails": d.get("sails", {}),
+        "sailSlots": {s["idx"]: s for s in d.get("sail_slots", [])},
         "polarFiles": [
             [p["file"], p.get("weight", 1.0)] + ([p["froude"]] if "froude" in p else [])
             for p in d.get("polar", {}).get("files", [])
@@ -45,6 +46,8 @@ def _load_spec(path):
             spec[key] = sp[toml_key]
     if "table" in d.get("polar", {}):
         spec["polar"] = d["polar"]["table"]
+    if "maxdive" in d.get("physics", {}):
+        spec["maxDive"] = d["physics"]["maxdive"]
     return d["type"], spec
 
 
@@ -121,13 +124,17 @@ def polar_speed(spec, tws, twa):
     return round(speed, 3)
 
 
-def load_csv_polar(path, no_go=0):
+def load_csv_polar(path):
     """Parses a Sailaway III polar export into {"tws": [m/s], "speeds": [[m/s]]}.
 
     Format: 'TWA/TWS;0;3;5;...' header (knots), then one row per TWA in knots.
     Tab-separated .pol files (OpenCPN / qtVlm) parse the same way.
     Cleans the raw VPP output: negative speeds -> 0, winds above 30 kn dropped
-    and held flat, small dips as the wind rises smoothed out.
+    and held flat, small dips as the wind rises smoothed out. The no-go zone
+    doesn't need forcing to zero here: real VPP exports already taper smoothly
+    to ~0 approaching head-to-wind (and are 0 at TWA 0 outright), so doing it
+    again from our own guessed no_go angle only threw away real close-hauled
+    speed (e.g. the Cruiser 38's own export sails slowly from TWA 5 up).
     """
     sep = ";" if ";" in open(path).readline() else None  # SA-III csv or tab .pol
     lines = [l.strip().split(sep) for l in open(path) if l.strip()]
@@ -143,9 +150,6 @@ def load_csv_polar(path, no_go=0):
             rows[twa] = vals
     if 0.0 not in rows:
         rows[0.0] = [0.0] * len(tws_kn)
-    for twa in rows:  # some exports claim speed at impossible angles (20-30 deg)
-        if twa < no_go - 6:
-            rows[twa] = [0.0] * len(tws_kn)
     keep = [i for i, t in enumerate(tws_kn) if t <= MAX_CSV_TWS_KN]
     angles = sorted(rows)
     table = []  # per kept tws: speeds on the game's 10 degree grid
@@ -181,10 +185,9 @@ def load_polar(btp):
     sources = polar_sources(btp)
     if not sources:
         return None
-    no_go = SPECS[btp]["noGo"]
     loaded = []
     for path, w, froude in sources:
-        polar = load_csv_polar(path, no_go)
+        polar = load_csv_polar(path)
         k = math.sqrt(froude)
         polar["tws"] = [round(t * k, 3) for t in polar["tws"]]
         polar["speeds"] = [[v * k for v in row] for row in polar["speeds"]]
@@ -260,9 +263,14 @@ def sail_data(btp, saved=None):
     saved = saved or {}
     spec = SPECS.get(btp, SPECS[1])
     areas = spec.get("sails", {})
+    slots = spec.get("sailSlots", {})
     out = [{"salidx": 0}]
     for idx, name, lo, hi, furls, sized_from in SAILS:
-        area = sail_area(areas, name, sized_from)
+        slot = slots.get(idx)
+        if slot is not None:
+            area, lo, hi = slot["area"], slot["minangle"], slot["maxangle"]
+        else:
+            area = sail_area(areas, name, sized_from)
         reefs = MAIN_REEFS if name in ("main", "mizzen") else (0, 0, 0)
         controls = {c: 0.0 for c in SAIL_CONTROLS}
         controls["salhalyard"] = 1.0 if name == "main" else 0.0
@@ -298,8 +306,14 @@ def physics(btp):
         "btpplanebarrier": round(min(max((dl_ratio(s) - 60) / 100, 0.1), 1.5), 2),
         "btphullcount": s.get("hulls", 1),
         "btpwakestrength": 1.0,
-        "btpdivemaxdegrees": 6,
-        "btpdivemindegrees": -6,
+        "btpdivemaxdegrees": s.get("maxDive", 3.7),
+        "btpdivemindegrees": -s.get("maxDive", 3.7),
+        # UserBoat defaults both to 1.0 (neutral) when the server omits them; we
+        # never sent them before, so every boat got the flattest possible helm.
+        # 100 (tried first) spins the boat on its keel at full helm, unusable;
+        # 5 controllable but still fast; 3.5 still too fast; dropped to 2.
+        "btpsteersensitivity": 2.0,
+        "btpsteerspeed": 2.0,
     }
     if s.get("heelmax"):
         out["btpheelmaxdegrees"] = s["heelmax"]

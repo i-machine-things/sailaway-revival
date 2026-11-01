@@ -32,3 +32,39 @@ code0 = 43.0
 files = [{ file = "Pogo_650.pol", weight = 1.0 }]
 note = "Pogo 6.50"
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 2 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.894
+stabilityadj = 0.99635
+
+[[sail_slots]]
+idx = 1
+area = 21.63
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 3
+area = 51.57
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 14.15
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 6
+area = 43.02
+minangle = 0
+maxangle = 75
+
+[[sail_slots]]
+idx = 10
+area = 10.36
+minangle = 0
+maxangle = 70
+

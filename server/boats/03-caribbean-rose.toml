@@ -31,3 +31,32 @@ jib = 37.8
 files = [{ file = "Swan_48.pol", weight = 1.0 }]
 note = ""
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 387 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.615
+
+[[sail_slots]]
+idx = 1
+area = 67.62
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 4
+area = 57.63
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 37.77
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 11
+area = 13.53
+minangle = 0
+maxangle = 70
+

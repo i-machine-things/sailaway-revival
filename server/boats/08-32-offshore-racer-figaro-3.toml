@@ -34,3 +34,44 @@ code0 = 61.3
 files = [{ file = "Figaro_2-2.pol", weight = 1.0 }]
 note = ""
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 363 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.707
+
+[[sail_slots]]
+idx = 1
+area = 41.97
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 3
+area = 84.75
+minangle = 0
+maxangle = 180
+
+[[sail_slots]]
+idx = 4
+area = 29.88
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 5
+area = 23.98
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 6
+area = 61.29
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 11
+area = 7.39
+minangle = 0
+maxangle = 70
+

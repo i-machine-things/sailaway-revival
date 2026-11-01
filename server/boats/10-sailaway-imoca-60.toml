@@ -37,3 +37,56 @@ storm = 14.1
 files = [{ file = "Imoca_2015.pol", weight = 1.0 }]
 note = ""
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 389 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.244
+
+[[sail_slots]]
+idx = 1
+area = 190.96
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 3
+area = 256.68
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 4
+area = 115.32
+minangle = 5
+maxangle = 90
+
+[[sail_slots]]
+idx = 5
+area = 97.9
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 6
+area = 257.41
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 7
+area = 108.11
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 10
+area = 55.27
+minangle = 0
+maxangle = 90
+
+[[sail_slots]]
+idx = 11
+area = 14.1
+minangle = 0
+maxangle = 70
+

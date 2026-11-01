@@ -30,3 +30,22 @@ jib = 7.3
 files = [{ file = "Nordic_Folkboat.pol", weight = 1.0 }]
 note = "median of 10 Nordic Folkboat ORC certificates"
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 361 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.917
+dragadj = 0.9165
+stabilityadj = 1.5
+
+[[sail_slots]]
+idx = 1
+area = 16.89
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 7.74
+minangle = 0
+maxangle = 70
+

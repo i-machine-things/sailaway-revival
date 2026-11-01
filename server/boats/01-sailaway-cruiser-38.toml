@@ -32,3 +32,32 @@ gennaker = 82.3
 files = [{ file = "Bavaria_38Cruiser.pol", weight = 1.0 }]
 note = ""
 
+
+[physics]
+# From sailaway.world BoatDesign.pl bdsnr 1 (live query, 2026-11-01); replaces guessed defaults.
+maxdive = 3.566
+
+[[sail_slots]]
+idx = 1
+area = 38.13
+minangle = 0
+maxangle = 70
+
+[[sail_slots]]
+idx = 3
+area = 82.27
+minangle = 11
+maxangle = 70
+
+[[sail_slots]]
+idx = 4
+area = 35.84
+minangle = 13
+maxangle = 70
+
+[[sail_slots]]
+idx = 5
+area = 19.27
+minangle = 14
+maxangle = 70
+

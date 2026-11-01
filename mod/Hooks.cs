@@ -7,6 +7,7 @@ namespace SailawayRevival
         // Start of ControlMaster.Update (runs every frame while a boat is loaded).
         public static void ControlMasterUpdate(ControlMaster master)
         {
+            BoatSwitcher.EnsureCreated();
             LineGrab.PreUpdate(master);
             AutoSave.Tick();
         }

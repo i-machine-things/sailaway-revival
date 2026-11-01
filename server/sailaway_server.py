@@ -72,11 +72,9 @@ def load_state():
             state[key].setdefault(k, v)
     if "boat" in state:  # single-boat state from the first version
         state["boats"]["1"] = state.pop("boat")
-    # One boat of every type, numbered by type, so all can be picked in game.
-    for btp, spec in boats.SPECS.items():
-        b = state["boats"].setdefault(str(btp), dict(START_POSITION))
-        b.update({"ubtnr": btp, "ubtbtpnr": btp})
-        b.setdefault("ubtname", spec["name"])
+    if not state["boats"]:  # fresh install: start with one boat of every type
+        for btp in boats.SPECS:
+            state["boats"][str(btp)] = new_boat(btp)
     return state
 
 
@@ -92,8 +90,23 @@ STATE = load_state()
 
 # ---------------------------------------------------------------- boats
 
+def new_boat(btp):
+    return dict(START_POSITION) | {
+        "ubtnr": btp, "ubtbtpnr": btp, "ubtname": boats.SPECS[btp]["name"],
+    }
+
+
 def boat_state(ubtnr):
-    return STATE["boats"].get(str(ubtnr)) or STATE["boats"][str(STATE["user"]["ubtnr"])]
+    key = str(ubtnr)
+    if key not in STATE["boats"] and int(ubtnr) in boats.SPECS:
+        # BoatSwitcher (mod/BoatSwitcher.cs) lets the player pick any of the 10
+        # boat types directly via SetUbtNr, without the normal AddExtraBoat
+        # flow ever running server-side. Create the boat on first request
+        # instead of silently aliasing to the current boat.
+        with _state_lock:
+            STATE["boats"].setdefault(key, new_boat(int(ubtnr)))
+            save_state(STATE)
+    return STATE["boats"].get(key) or STATE["boats"][str(STATE["user"]["ubtnr"])]
 
 
 def boat_info(ubtnr):
@@ -119,10 +132,53 @@ def boat_info(ubtnr):
 
 
 def user_boats(form):
+    delubtnr = form.get("delubtnr")
+    addbtpnr = form.get("addbtpnr")
+    with _state_lock:
+        if delubtnr and str(delubtnr) in STATE["boats"] and len(STATE["boats"]) > 1:
+            del STATE["boats"][str(delubtnr)]
+            if STATE["user"]["ubtnr"] == int(delubtnr):
+                STATE["user"]["ubtnr"] = min(int(k) for k in STATE["boats"])
+            save_state(STATE)
+        if addbtpnr and addbtpnr.isdigit() and int(addbtpnr) in boats.SPECS:
+            btp = int(addbtpnr)
+            if str(btp) not in STATE["boats"]:
+                STATE["boats"][str(btp)] = new_boat(btp)
+                save_state(STATE)
     rows = []
+    current = STATE["user"].get("ubtnr")
     for b in sorted(STATE["boats"].values(), key=lambda b: b["ubtnr"]):
-        rows.append(b | {"prdtitle": boats.SPECS[b["ubtbtpnr"]]["name"], "prdbtpnr": b["ubtbtpnr"], "status": ""})
-    return {"userboats": rows, "teams": [], "boattypespecs": []}
+        rows.append(b | {
+            "prdtitle": boats.SPECS[b["ubtbtpnr"]]["name"],
+            "prdbtpnr": b["ubtbtpnr"],
+            "status": "",
+            # The live game's final version gated every boat but the active one
+            # behind a Sailaway III upsell ("UpgradeFunctionNotAllowed") as it
+            # wound the original game down. usrlicense (UserAccount.pl) already
+            # claims full access; upgradelicense=0 says this boat itself needs
+            # no license, and boatsowned=1 says the player already owns it (a
+            # per-row flag, distinct from the account-level usrboatsowned) so
+            # the add-boat flow doesn't treat it as something to purchase.
+            "upgradelicense": 0,
+            "boatsowned": 1,
+            "authorized": True,
+            "isCurrentBoat": b["ubtnr"] == current,
+        })
+    # The AddExtraBoat screen reads this for its own catalog (boat types not
+    # yet owned); we left it empty before, so the screen had nothing to show
+    # or click.
+    available = [
+        {
+            "prdtitle": spec["name"],
+            "prdbtpnr": btp,
+            "upgradelicense": 0,
+            "boatsowned": 0,
+            "authorized": True,
+        }
+        for btp, spec in sorted(boats.SPECS.items())
+        if str(btp) not in STATE["boats"]
+    ]
+    return {"userboats": rows, "teams": [], "boattypespecs": available}
 
 
 # ---------------------------------------------------------------- weather
