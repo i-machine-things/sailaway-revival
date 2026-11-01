@@ -15,6 +15,7 @@ namespace SailawayRevival
     public class BoatSwitcher : MonoBehaviour
     {
         static bool created;
+        static BoatSwitcher instance;
         bool visible;
 
         static readonly string[] BoatNames =
@@ -34,16 +35,42 @@ namespace SailawayRevival
             created = true;
             var go = new GameObject("SailawayRevivalBoatSwitcher");
             Object.DontDestroyOnLoad(go);
-            go.AddComponent<BoatSwitcher>();
+            instance = go.AddComponent<BoatSwitcher>();
+        }
+
+        // Called from Hooks.SkipShowSubMenuBoat, which replaces the main
+        // menu's broken "Boat" button entirely (see patcher's hook on
+        // MainMenu.ShowSubMenuBoat).
+        public static void Show()
+        {
+            if (instance != null)
+            {
+                instance.visible = true;
+            }
         }
 
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.B))
             {
-                visible = !visible;
+                if (visible)
+                {
+                    CloseAndRestoreMenu();
+                }
+                else
+                {
+                    visible = true;
+                }
+            }
+            else if (visible && Input.GetKeyDown(KeyCode.Escape))
+            {
+                CloseAndRestoreMenu();
             }
         }
+
+        const int Columns = 5;
+        const int TileSize = 140;
+        GUIStyle nameStyle;
 
         void OnGUI()
         {
@@ -51,18 +78,72 @@ namespace SailawayRevival
             {
                 return;
             }
-            GUILayout.BeginArea(new Rect(20, 20, 260, 320), GUI.skin.box);
-            GUILayout.Label("Switch boat (B to close)");
-            for (int i = 0; i < BoatNames.Length; i++)
+            if (nameStyle == null)
             {
-                int btpNr = i + 1;
-                if (GUILayout.Button(BoatNames[i]))
+                nameStyle = new GUIStyle(GUI.skin.label)
                 {
-                    StartCoroutine(SwitchAndLog(btpNr));
-                    visible = false;
+                    alignment = TextAnchor.UpperCenter,
+                    wordWrap = true,
+                    fontSize = 11,
+                };
+            }
+
+            // Layout math below is all in 1920x1080-reference pixels; scaling
+            // (and re-centering on the real screen) happens in one place here
+            // instead of threading Screen.width/height through every size.
+            float scale = Mathf.Clamp(Mathf.Min(Screen.width / 1920f, Screen.height / 1080f) * 2f, 0.5f, 4f);
+            GUIUtility.ScaleAroundPivot(new Vector2(scale, scale), Vector2.zero);
+            float refScreenWidth = Screen.width / scale;
+            float refScreenHeight = Screen.height / scale;
+
+            int rows = Mathf.CeilToInt(BoatNames.Length / (float)Columns);
+            float width = Columns * (TileSize + 10) + 20;
+            float height = rows * (TileSize + 40) + 50;
+            float x = (refScreenWidth - width) / 2f;
+            float y = (refScreenHeight - height) / 2f;
+            GUILayout.BeginArea(new Rect(x, y, width, height), GUI.skin.box);
+            GUILayout.Label("Switch boat (B to close)");
+            for (int row = 0; row < rows; row++)
+            {
+                GUILayout.BeginHorizontal();
+                for (int col = 0; col < Columns; col++)
+                {
+                    int i = row * Columns + col;
+                    if (i >= BoatNames.Length)
+                    {
+                        break;
+                    }
+                    int btpNr = i + 1;
+                    GUILayout.BeginVertical(GUILayout.Width(TileSize));
+                    var thumb = BoatThumbnails.Get(btpNr);
+                    bool clicked = thumb != null
+                        ? GUILayout.Button(thumb, GUILayout.Width(TileSize), GUILayout.Height(TileSize))
+                        : GUILayout.Button("(loading)", GUILayout.Width(TileSize), GUILayout.Height(TileSize));
+                    GUILayout.Label(BoatNames[i], nameStyle, GUILayout.Width(TileSize));
+                    GUILayout.EndVertical();
+                    if (clicked)
+                    {
+                        StartCoroutine(SwitchAndLog(btpNr));
+                        CloseAndRestoreMenu();
+                    }
                 }
+                GUILayout.EndHorizontal();
             }
             GUILayout.EndArea();
+        }
+
+        // We replace MainMenu's "Boat" screen entirely (see Hooks.cs), but
+        // never call the game's own MainMenu.Close(), which is what disables
+        // the background blur/color-corrector it turns on while any main
+        // menu screen is open (MainMenu.CloseWhenScreenBecameBlank). Without
+        // this the screen stays permanently blurred after picking a boat.
+        void CloseAndRestoreMenu()
+        {
+            visible = false;
+            if (MainMenu.instance != null)
+            {
+                MainMenu.instance.Close();
+            }
         }
 
         static object ReadPrivate(object target, string fieldName)

@@ -385,6 +385,14 @@ ENDPOINTS = {
     "GetUserBoats.pl": user_boats,
     "UserWorldEdit.pl": lambda f: {"UserWorldEdits": []},
     "NearestWater.pl": ep_nearest_water,
+    # MainMenu.Show() calls both of these unconditionally every time the main
+    # menu opens (MainMenu.BackendSucceeded's handlers for them). An empty
+    # dict response (our default for anything unhandled) is missing the key
+    # each one does GetArrayList(...).Count on, which NullReferenceExceptions -
+    # seen in Player.log right after a window resize, which happens to call
+    # MainMenu.Show() again.
+    "GetFeatured.pl": lambda f: {"featured": []},
+    "Invitations.pl": lambda f: {"openinvitations": []},
 }
 
 
