@@ -32,3 +32,12 @@ jobs:
       - name: Import every server module
         working-directory: server
         run: python -c "import appearance, boats, runlog, tiles, sailaway_server"
+
+  install-script:
+    # Only a syntax check: the real install (building mod/ against the
+    # player's own game files, patching, launching Sailaway) can't run in
+    # CI at all - see the patcher job's comment above.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh -n install.sh

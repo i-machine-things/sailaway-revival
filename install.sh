@@ -32,10 +32,15 @@ if ps -eo comm | grep -qix 'sailaway.exe\|sailaway'; then
     die "Sailaway is running. Close the game and run this again."
 fi
 
-# --- tools -----------------------------------------------------------------
+# --- tools -------------------------------------------------------------
 DOTNET="$(command -v dotnet || true)"
 [ -z "$DOTNET" ] && [ -x "$HOME/.dotnet/dotnet" ] && DOTNET="$HOME/.dotnet/dotnet"
-[ -n "$DOTNET" ] || die "the .NET 8 SDK is needed: https://dotnet.microsoft.com/download (or your distro's dotnet-sdk-8.0 package)"
+if [ -z "$DOTNET" ]; then
+    say "Installing the .NET 8 SDK (official installer, no root needed, goes in ~/.dotnet)"
+    curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 8.0 --install-dir "$HOME/.dotnet" \
+        || die "could not install the .NET 8 SDK automatically; install it yourself: https://dotnet.microsoft.com/download"
+    DOTNET="$HOME/.dotnet/dotnet"
+fi
 export DOTNET_ROOT="${DOTNET_ROOT:-$(dirname "$(readlink -f "$DOTNET")")}"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
@@ -78,9 +83,16 @@ say "Setting up the server"
 if [ ! -x .venv/bin/python ]; then
     if command -v uv >/dev/null; then
         uv venv -q .venv
-    elif ! python3 -m venv .venv 2>/dev/null; then
+    elif python3 -m venv .venv 2>/dev/null; then
+        :
+    else
         rm -rf .venv
-        die "could not create a Python environment; install python3-venv (Debian/Ubuntu) or uv"
+        say "Installing uv (official installer, no root needed, goes in ~/.local/bin)"
+        curl -LsSf https://astral.sh/uv/install.sh | sh \
+            || die "could not install uv automatically; install python3-venv (Debian/Ubuntu) or uv yourself: https://docs.astral.sh/uv/"
+        export PATH="$HOME/.local/bin:$PATH"
+        command -v uv >/dev/null || die "uv installed but not on PATH; open a new shell and re-run install.sh"
+        uv venv -q .venv
     fi
 fi
 if command -v uv >/dev/null; then
