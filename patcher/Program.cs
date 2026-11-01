@@ -119,6 +119,20 @@ if (modDll != null)
     il.InsertBefore(first, il.Create(OpCodes.Ret));
     Console.WriteLine($"  mod: {modName} hooked into ControlMaster (line grab, autosave)");
     changes++;
+
+    // Replace the main menu's "Boat" button: CoverFlowSelector's MyBoats
+    // screen is broken in this EOL build (see BoatSwitcher.cs), so skip it
+    // entirely in favor of our own grid.
+    var mainMenu = module.GetType("MainMenu");
+    var showBoat = mainMenu.Methods.First(m => m.Name == "ShowSubMenuBoat");
+    il = showBoat.Body.GetILProcessor();
+    first = showBoat.Body.Instructions[0];
+    il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
+    il.InsertBefore(first, il.Create(OpCodes.Call, module.ImportReference(hooks.Methods.First(m => m.Name == "SkipShowSubMenuBoat"))));
+    il.InsertBefore(first, il.Create(OpCodes.Brfalse, first));
+    il.InsertBefore(first, il.Create(OpCodes.Ret));
+    Console.WriteLine($"  mod: {modName} hooked into MainMenu.ShowSubMenuBoat (boat switcher)");
+    changes++;
 }
 
 // Write beside the DLL and swap it in, so a half-written file never replaces it.
