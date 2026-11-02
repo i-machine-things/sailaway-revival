@@ -17,13 +17,13 @@ jobs:
   sanity-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
       - name: Sanity-build patcher before tagging a release
         run: dotnet build patcher
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -r server/requirements.txt
@@ -44,8 +44,8 @@ jobs:
           - rid: win-x64
             ext: zip
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
       - name: Publish the installer for ${{ matrix.rid }}
@@ -60,7 +60,7 @@ jobs:
       - name: Archive (zip)
         if: matrix.ext == 'zip'
         run: cd bundle && zip -qr ../sailaway-revival-installer-${{ matrix.rid }}.zip .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installer-${{ matrix.rid }}
           path: sailaway-revival-installer-${{ matrix.rid }}.${{ matrix.ext }}
@@ -72,8 +72,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
