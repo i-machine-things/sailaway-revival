@@ -80,19 +80,31 @@ say "Building the mod and patching the game (server $SERVER)"
 
 # --- 2. server environment -------------------------------------------------
 say "Setting up the server"
+# server/*.py uses tomllib (stdlib only since 3.11), so .venv's interpreter
+# must be 3.11+ - plenty of still-common system python3s (e.g. Ubuntu 22.04's
+# 3.10) are older than that.
+PYTHON_MIN="3.11"
+py_ok() { "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; }
+if [ -x .venv/bin/python ] && ! py_ok .venv/bin/python; then
+    echo "existing .venv has an older Python than $PYTHON_MIN; recreating it"
+    rm -rf .venv
+fi
 if [ ! -x .venv/bin/python ]; then
     if command -v uv >/dev/null; then
-        uv venv -q .venv
-    elif python3 -m venv .venv 2>/dev/null; then
+        uv venv -q --python "$PYTHON_MIN" .venv
+    elif command -v python3 >/dev/null && py_ok python3 && python3 -m venv .venv 2>/dev/null; then
         :
     else
         rm -rf .venv
         say "Installing uv (official installer, no root needed, goes in ~/.local/bin)"
         curl -LsSf https://astral.sh/uv/install.sh | sh \
-            || die "could not install uv automatically; install python3-venv (Debian/Ubuntu) or uv yourself: https://docs.astral.sh/uv/"
-        export PATH="$HOME/.local/bin:$PATH"
+            || die "could not install uv automatically; install python3.11+ yourself: https://docs.astral.sh/uv/"
+        # uv's installer honors UV_INSTALL_DIR/XDG_BIN_HOME and may not use
+        # ~/.local/bin, so look there first rather than assuming it.
+        UV_BIN_DIR="${UV_INSTALL_DIR:-${XDG_BIN_HOME:-$HOME/.local/bin}}"
+        export PATH="$UV_BIN_DIR:$PATH"
         command -v uv >/dev/null || die "uv installed but not on PATH; open a new shell and re-run install.sh"
-        uv venv -q .venv
+        uv venv -q --python "$PYTHON_MIN" .venv
     fi
 fi
 if command -v uv >/dev/null; then
