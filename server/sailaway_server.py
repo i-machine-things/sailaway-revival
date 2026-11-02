@@ -60,6 +60,12 @@ DEFAULT_STATE = {
 _state_lock = threading.Lock()
 
 
+def new_boat(btp):
+    return dict(START_POSITION) | {
+        "ubtnr": btp, "ubtbtpnr": btp, "ubtname": boats.SPECS[btp]["name"],
+    }
+
+
 def load_state():
     try:
         with open(STATE_FILE) as f:
@@ -89,12 +95,6 @@ def save_state(state):
 STATE = load_state()
 
 # ---------------------------------------------------------------- boats
-
-def new_boat(btp):
-    return dict(START_POSITION) | {
-        "ubtnr": btp, "ubtbtpnr": btp, "ubtname": boats.SPECS[btp]["name"],
-    }
-
 
 def boat_state(ubtnr):
     key = str(ubtnr)

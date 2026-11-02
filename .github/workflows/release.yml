@@ -1,0 +1,38 @@
+name: Release
+
+# Nothing is pre-built for a release: mod/ needs the player's own game
+# files to compile and patcher/mod/server are all built and run locally by
+# install.sh at install time (see ci.yml and install.sh). A release here is
+# just a tagged, checked snapshot of the source - GitHub's own automatic
+# zip/tar.gz source archives are the download, no custom packaging needed.
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Sanity-build patcher before tagging a release
+        run: dotnet build patcher
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r server/requirements.txt
+      - name: Sanity-import every server module before tagging a release
+        working-directory: server
+        run: python -c "import appearance, boats, runlog, tiles, sailaway_server"
+      - name: Check install.sh syntax before tagging a release
+        run: sh -n install.sh
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: gh release create "$TAG_NAME" --generate-notes
