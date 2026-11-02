@@ -1,20 +1,21 @@
 name: Release
 
-# Nothing is pre-built for a release: mod/ needs the player's own game
-# files to compile and patcher/mod/server are all built and run locally by
-# install.sh at install time (see ci.yml and install.sh). A release here is
-# just a tagged, checked snapshot of the source - GitHub's own automatic
-# zip/tar.gz source archives are the download, no custom packaging needed.
+# mod/, patcher/, and the server still only ever build/run locally, against
+# the player's own game files, the same way install.sh and the installer app
+# both already do it at install time - this workflow doesn't change that.
+# What IS prebuilt and attached below is the installer app itself, bundled
+# with the repo source it needs to find next to it at runtime
+# (installer/ViewModels/InstallViewModel.cs's FindRepoRoot walks up from the
+# running executable looking for server/sailaway_server.py), since the
+# installer isn't a standalone download that fetches sources separately.
 
 on:
   push:
     tags: ["v*"]
 
 jobs:
-  release:
+  sanity-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -31,8 +32,53 @@ jobs:
         run: python -c "import appearance, boats, runlog, tiles, sailaway_server"
       - name: Check install.sh syntax before tagging a release
         run: sh -n install.sh
+
+  build-installer:
+    needs: sanity-check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - rid: linux-x64
+            ext: tar.gz
+          - rid: win-x64
+            ext: zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish the installer for ${{ matrix.rid }}
+        run: >
+          dotnet publish installer -c Release -r ${{ matrix.rid }}
+          --self-contained -p:PublishSingleFile=true -o bundle
+      - name: Add the mod/patcher/server source the installer builds and runs at install time
+        run: git archive HEAD mod patcher server packaging | tar -x -C bundle
+      - name: Archive (tar.gz)
+        if: matrix.ext == 'tar.gz'
+        run: tar -C bundle -czf sailaway-revival-installer-${{ matrix.rid }}.tar.gz .
+      - name: Archive (zip)
+        if: matrix.ext == 'zip'
+        run: cd bundle && zip -qr ../sailaway-revival-installer-${{ matrix.rid }}.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.rid }}
+          path: sailaway-revival-installer-${{ matrix.rid }}.${{ matrix.ext }}
+          retention-days: 1
+
+  release:
+    needs: build-installer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.ref_name }}
-        run: gh release create "$TAG_NAME" --generate-notes
+        run: gh release create "$TAG_NAME" --generate-notes artifacts/*
