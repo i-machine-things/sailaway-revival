@@ -94,7 +94,25 @@ il.Emit(OpCodes.Ret);
 Console.WriteLine("  MultiuserCtrl.LockControl -> always true");
 changes++;
 
-// 5. Gameplay mods from SailawayRevival.Mod.dll, hooked into the game's code.
+// 5. Weather.waveLength is otherwise hardcoded to local seafloor depth
+//    (Sea.set_avgDepth calls this setter every time the sampled depth moves
+//    past a threshold), nothing to do with the real sea state. mod/Waves.cs
+//    drives the real wavelength itself (from real wave period) straight into
+//    the backing field via reflection; leaving this setter live would let
+//    Sea.set_avgDepth race it back to the fake depth-based value whenever its
+//    own Update happens to run after the mod's hook in a given frame (most
+//    noticeable right after a teleport, while depth samples are still
+//    settling). No-op it so the mod's value always wins.
+var weather = module.GetType("Weather");
+var setWaveLength = weather.Methods.First(m => m.Name == "set_waveLength");
+il = setWaveLength.Body.GetILProcessor();
+setWaveLength.Body.Instructions.Clear();
+setWaveLength.Body.ExceptionHandlers.Clear();
+il.Emit(OpCodes.Ret);
+Console.WriteLine("  Weather.set_waveLength -> no-op (mod/Waves.cs drives it directly)");
+changes++;
+
+// 6. Gameplay mods from SailawayRevival.Mod.dll, hooked into the game's code.
 if (modDll != null)
 {
     string modName = Path.GetFileName(modDll);
