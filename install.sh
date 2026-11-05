@@ -2,11 +2,15 @@
 # Sailaway Revival installer (Linux). Safe to re-run, e.g. after Steam's
 # "verify integrity of game files" restored the original game DLL.
 #
-# usage: ./install.sh [<Steam>/steamapps/common/Sailaway] [server host[:port][/prefix]]
+# usage: ./install.sh [<Steam>/steamapps/common/Sailaway] [server host[:port][/prefix]] [--persistent|--no-persistent]
 #
 # 1. builds the gameplay mod against your own game files and patches the game
 # 2. sets up the server's Python environment
-# 3. installs a systemd user socket so the server starts when the game connects
+# 3. installs a systemd user unit for the server - by default a socket that
+#    starts it on demand and stops it after 30 idle minutes; --persistent
+#    instead runs it continuously in the background, so state (tile cache,
+#    live weather) survives between sessions and there's no cold-start delay.
+#    The choice is remembered in config.toml across re-runs.
 set -e
 cd "$(dirname "$0")"
 REPO="$(pwd)"
@@ -14,8 +18,23 @@ REPO="$(pwd)"
 say() { printf '\n== %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+# --- args --------------------------------------------------------------
+GAME=""
+SERVER_ARG=""
+PERSISTENT_FLAG=""
+for arg in "$@"; do
+    case "$arg" in
+        --persistent) PERSISTENT_FLAG=1 ;;
+        --no-persistent) PERSISTENT_FLAG=0 ;;
+        *)
+            if [ -z "$GAME" ]; then GAME="$arg"
+            else SERVER_ARG="$arg"
+            fi
+            ;;
+    esac
+done
+
 # --- find the game ---------------------------------------------------------
-GAME="$1"
 if [ -z "$GAME" ]; then
     for root in "$HOME/.steam/steam" "$HOME/.local/share/Steam" \
                 "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam"; do
@@ -51,10 +70,13 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sailaway-revival"
 CONFIG="$CONFIG_DIR/config.toml"
 PORT=47652
+PERSISTENT=0
 if [ -f "$CONFIG" ]; then
     PORT="$(sed -n 's/^port *= *\([0-9]*\).*/\1/p' "$CONFIG" | head -1)"
     [ -n "$PORT" ] || PORT=47652
+    grep -q '^persistent *= *true' "$CONFIG" && PERSISTENT=1
 fi
+[ -n "$PERSISTENT_FLAG" ] && PERSISTENT="$PERSISTENT_FLAG"
 port_free() {
     python3 -c 'import socket,sys; s=socket.socket(); s.bind(("127.0.0.1", int(sys.argv[1])))' "$1" 2>/dev/null
 }
@@ -70,8 +92,12 @@ if ! port_free "$PORT" && ! port_ours "$PORT"; then
     done
 fi
 mkdir -p "$CONFIG_DIR"
-printf '# written by install.sh; the game is patched for this port\nport = %s\n' "$PORT" > "$CONFIG"
-SERVER="${2:-127.0.0.1:$PORT/sw}"
+{
+    printf '# written by install.sh; the game is patched for this port\n'
+    printf 'port = %s\n' "$PORT"
+    [ "$PERSISTENT" = 1 ] && printf 'persistent = true\n' || printf 'persistent = false\n'
+} > "$CONFIG"
+SERVER="${SERVER_ARG:-127.0.0.1:$PORT/sw}"
 
 # --- 1. mod + patch --------------------------------------------------------
 say "Building the mod and patching the game (server $SERVER)"
@@ -113,18 +139,34 @@ else
     .venv/bin/python -m pip install -q -r server/requirements.txt
 fi
 
-# --- 3. start the server on demand -----------------------------------------
+# --- 3. start the server --------------------------------------------------
 if command -v systemctl >/dev/null && systemctl --user show-environment >/dev/null 2>&1; then
-    say "Installing the systemd user socket"
     UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
     mkdir -p "$UNITS"
-    sed -e "s|@PORT@|$PORT|" packaging/systemd/sailaway-revival.socket.in > "$UNITS/sailaway-revival.socket"
-    sed -e "s|@PYTHON@|$REPO/.venv/bin/python|" -e "s|@REPO@|$REPO|" \
-        packaging/systemd/sailaway-revival.service.in > "$UNITS/sailaway-revival.service"
-    systemctl --user daemon-reload
-    systemctl --user stop sailaway-revival.service 2>/dev/null || true  # pick up new code
-    systemctl --user enable --now sailaway-revival.socket
-    echo "The server now starts by itself when Sailaway connects."
+    # Clean slate: whichever mode was active before (if any), stop and
+    # unlink it before writing+enabling the one we actually want, so
+    # switching modes on a re-run doesn't leave the old one also runnable.
+    systemctl --user stop sailaway-revival.service sailaway-revival.socket 2>/dev/null || true
+    systemctl --user disable sailaway-revival.service sailaway-revival.socket 2>/dev/null || true
+    if [ "$PERSISTENT" = 1 ]; then
+        say "Installing the systemd service (runs continuously in the background)"
+        rm -f "$UNITS/sailaway-revival.socket"
+        sed -e "s|@PYTHON@|$REPO/.venv/bin/python|" -e "s|@REPO@|$REPO|" \
+            packaging/systemd/sailaway-revival-persistent.service.in > "$UNITS/sailaway-revival.service"
+        systemctl --user daemon-reload
+        systemctl --user enable --now sailaway-revival.service
+        echo "The server now runs continuously in the background (survives between play sessions)."
+        echo "Switch back with: ./install.sh --no-persistent"
+    else
+        say "Installing the systemd user socket"
+        sed -e "s|@PORT@|$PORT|" packaging/systemd/sailaway-revival.socket.in > "$UNITS/sailaway-revival.socket"
+        sed -e "s|@PYTHON@|$REPO/.venv/bin/python|" -e "s|@REPO@|$REPO|" \
+            packaging/systemd/sailaway-revival.service.in > "$UNITS/sailaway-revival.service"
+        systemctl --user daemon-reload
+        systemctl --user enable --now sailaway-revival.socket
+        echo "The server now starts by itself when Sailaway connects, and stops after 30 idle minutes."
+        echo "Keep it running in the background instead with: ./install.sh --persistent"
+    fi
     echo "Logs: journalctl --user -u sailaway-revival"
 else
     echo "systemd not available: start the server yourself before playing:"
