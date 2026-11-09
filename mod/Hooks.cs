@@ -13,6 +13,7 @@ namespace SailawayRevival
             BoatSwitcher.EnsureCreated();
             LineGrab.PreUpdate(master);
             AutoSave.Tick();
+            Waves.Tick();
         }
 
         // Start of ControlMaster._FindControlUnderCursor; true skips the original.

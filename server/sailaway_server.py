@@ -230,7 +230,8 @@ def environment(lat, lon):
                 {
                     "latitude": key[0],
                     "longitude": key[1],
-                    "current": "wave_height,wave_direction,ocean_current_velocity,ocean_current_direction",
+                    "current": "wave_height,wave_period,wave_direction,"
+                    "ocean_current_velocity,ocean_current_direction",
                 }
             )
             cur = fetch_json("https://marine-api.open-meteo.com/v1/marine?" + q)["current"]
@@ -239,6 +240,7 @@ def environment(lat, lon):
             env.update(
                 {
                     "waveheight": cur.get("wave_height") or 0,
+                    "waveperiod": cur.get("wave_period") or 8.0,
                     "wavedir": cur.get("wave_direction") or 0,
                     "curu": speed * math.sin(direction),
                     "curv": speed * math.cos(direction),
@@ -365,6 +367,17 @@ def ep_environment(form):
     return {"environment": environment(float(form.get("lat", 0)), float(form.get("lon", 0)))}
 
 
+# The game protocol has no field for wave period at all - Weather.waveLength
+# is hardcoded client-side to local seafloor depth, completely decoupled from
+# the real sea state. mod/Waves.cs polls this directly (not part of the
+# game's own networking) to override that with a wavelength derived from the
+# real period, so wave height renders at a realistic steepness instead of
+# whatever the depth-only formula happens to produce.
+def ep_waves(form):
+    env = environment(float(form.get("lat", 0)), float(form.get("lon", 0)))
+    return {"waveheight": env.get("waveheight", 0), "waveperiod": env.get("waveperiod", 8.0)}
+
+
 def ep_nearest_water(form):
     lat, lon = float(form.get("lat", 0)), float(form.get("lon", 0))
     found = tiles.nearest_water(lat, lon, float(form.get("minDepth", 3)), TILE_DIR)
@@ -385,6 +398,7 @@ ENDPOINTS = {
     "GetUserBoats.pl": user_boats,
     "UserWorldEdit.pl": lambda f: {"UserWorldEdits": []},
     "NearestWater.pl": ep_nearest_water,
+    "waves.pl": ep_waves,
     # MainMenu.Show() calls both of these unconditionally every time the main
     # menu opens (MainMenu.BackendSucceeded's handlers for them). An empty
     # dict response (our default for anything unhandled) is missing the key
