@@ -36,6 +36,7 @@ namespace SailawayRevival
     public static class Waves
     {
         const float PollIntervalSeconds = 1800f; // matches the server's own weather cache TTL
+        const float RetryDelaySeconds = 30f; // backoff after a failed fetch, instead of waiting out the full interval
         const float MinPeriodSeconds = 2f;
 
         static readonly FieldInfo seaWaveLengthField = typeof(Sea).GetField("_waveLength", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -56,6 +57,8 @@ namespace SailawayRevival
         static bool havePosition;
         static double lastLat, lastLon;
         static volatile bool fetching;
+        static volatile bool refetchPending; // a teleport landed while a fetch was already in flight
+        static volatile bool retryPending; // the last fetch failed; retry sooner than the full interval
         static volatile float realHeight;
         static volatile float realPeriod = 8f;
 
@@ -83,8 +86,18 @@ namespace SailawayRevival
 
             // Position-blind otherwise - the 30min timer alone would keep
             // serving the old location's sea state right after a teleport.
-            if ((teleported || Time.unscaledTime - lastPoll > PollIntervalSeconds) && !fetching)
+            // A teleport while a fetch is already running would otherwise be
+            // lost outright: `teleported` is true for one frame only, and a
+            // fetch in flight (10s server-side timeout) easily outlasts it.
+            if (teleported)
             {
+                refetchPending = true;
+            }
+            bool retryDue = retryPending && Time.unscaledTime - lastPoll > RetryDelaySeconds;
+            if ((refetchPending || retryDue || Time.unscaledTime - lastPoll > PollIntervalSeconds) && !fetching)
+            {
+                refetchPending = false;
+                retryPending = false;
                 lastPoll = Time.unscaledTime;
                 fetching = true;
                 Task.Run(() => Fetch(lat, lon));
@@ -133,6 +146,7 @@ namespace SailawayRevival
             catch (Exception e)
             {
                 Debug.LogWarning("Waves: fetch failed: " + e.Message);
+                retryPending = true; // let Tick (main thread) decide when to retry, not this background task
             }
             finally
             {

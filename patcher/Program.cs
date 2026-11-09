@@ -102,15 +102,20 @@ changes++;
 //    Sea.set_avgDepth race it back to the fake depth-based value whenever its
 //    own Update happens to run after the mod's hook in a given frame (most
 //    noticeable right after a teleport, while depth samples are still
-//    settling). No-op it so the mod's value always wins.
-var weather = module.GetType("Weather");
-var setWaveLength = weather.Methods.First(m => m.Name == "set_waveLength");
-il = setWaveLength.Body.GetILProcessor();
-setWaveLength.Body.Instructions.Clear();
-setWaveLength.Body.ExceptionHandlers.Clear();
-il.Emit(OpCodes.Ret);
-Console.WriteLine("  Weather.set_waveLength -> no-op (mod/Waves.cs drives it directly)");
-changes++;
+//    settling). No-op it so the mod's value always wins - but only when the
+//    mod is actually installed to replace it; otherwise Weather.waveLength
+//    would never be set at all (--mod is optional, see usage above).
+if (modDll != null)
+{
+    var weather = module.GetType("Weather");
+    var setWaveLength = weather.Methods.First(m => m.Name == "set_waveLength");
+    il = setWaveLength.Body.GetILProcessor();
+    setWaveLength.Body.Instructions.Clear();
+    setWaveLength.Body.ExceptionHandlers.Clear();
+    il.Emit(OpCodes.Ret);
+    Console.WriteLine("  Weather.set_waveLength -> no-op (mod/Waves.cs drives it directly)");
+    changes++;
+}
 
 // 6. Gameplay mods from SailawayRevival.Mod.dll, hooked into the game's code.
 if (modDll != null)
